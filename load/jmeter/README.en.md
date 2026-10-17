@@ -60,6 +60,26 @@ in `fixtures/jmeter/PROVENANCE.md`.
 - JTL latencies are whole milliseconds: with a 9 ms p95, a 10% increase (0.9 ms) is below the
   measurement resolution.
 
+## Measurement in CI (2026-10-17)
+
+Source: run of the `jmeter (short profile)` job on PR #2 (artifact `jmeter-results`).
+
+- GitHub runner: Ubuntu 24.04.5, AMD EPYC 7763, **2 CPUs** — JMeter, the API and PostgreSQL
+  share these two cores.
+- The same schedule as locally, to the sample: 2,500 samples, 2,386 without the ramp, duration
+  119.46 s (the schedule seeds are fixed). 19.97 requests per second, 0 errors.
+- p50 / p95 / p99: 5 / 10 / 14 ms. Coefficient of variation of raw latencies: 0.46 overall, 0.35
+  to 0.42 per transaction — the same order as locally.
+- Whole job: 4 min 52 s, of which 192 s for the JMeter step.
+
+## 60 s wait when JMeter exits
+
+The JMeter container stops about 60 s after the end of the test (`... end of run`), whatever the
+run length: 192 s for a 130 s schedule, locally and in CI, and a 59.5 s wait after a 5 s run.
+JMeter's built-in check (`-Jjmeter.exit.check.pause=5000`) reports no blocking thread, and the
+launcher script does nothing after calling Java. **Cause unknown.** Cost: one minute per JMeter
+launch.
+
 ## Limits
 
 - The load generator and the system under test share the same machine: JMeter uses CPU the

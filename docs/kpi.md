@@ -45,5 +45,6 @@ is below that resolution.
 
 `cv` describes the spread of one run's latencies. Whether it is the right stability criterion
 for the INCONCLUSIVE verdict is decided by measurement in the statistical calibration step, not
-here. First measurement (local, 2026-10-17, nominal run of the CI profile): raw-latency CV of
-0.47 overall and 0.32 to 0.38 per transaction, far above a 15% threshold on a healthy run.
+here. First measurements of a nominal run of the CI profile (2026-10-17): raw-latency CV of 0.47
+overall and 0.32 to 0.38 per transaction locally, 0.46 overall and 0.35 to 0.42 per transaction
+in CI (`load/jmeter/README.en.md`) — far above a 15% threshold on a healthy run.
