@@ -31,3 +31,36 @@ jobs:
           ruff format --check .
       - name: Tests (zero API keys by design)
         run: python -m pytest
+
+  sut:
+    # The functional suite runs once per mode: a regression must change performance only.
+    name: sut (${{ matrix.regression }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        regression: [none, N_PLUS_ONE, LOCK, POOL]
+    env:
+      SUT_REGRESSION_N_PLUS_ONE: ${{ matrix.regression == 'N_PLUS_ONE' && '1' || '0' }}
+      SUT_REGRESSION_LOCK: ${{ matrix.regression == 'LOCK' && '1' || '0' }}
+      SUT_REGRESSION_POOL: ${{ matrix.regression == 'POOL' && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.16"
+      - name: Install test dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Start the system under test
+        run: docker compose up -d --build --wait
+      - name: Functional tests
+        run: python -m pytest sut/tests
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Stop the system under test
+        if: always()
+        run: docker compose down -v
