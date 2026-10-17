@@ -4,14 +4,14 @@
 statistics, not by a single threshold.**
 
 [![CI](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml/badge.svg)](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-1%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-48%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.13%2B-blue?logo=python)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 > 🇫🇷 [Version française](README.md)
 
-> 🚧 **Under construction.** No feature is delivered yet: this page describes the v1 goal. The
-> actual state is tracked in the [CHANGELOG](CHANGELOG.md).
+> 🚧 **Under construction.** The verdict engine is not delivered yet: this page describes the v1
+> goal. The actual state is tracked in the [CHANGELOG](CHANGELOG.md).
 
 ## The problem
 
@@ -36,7 +36,7 @@ threshold then blocks healthy changes, or lets a real regression through.
 
 ## Status
 
-Current step: project skeleton and CI (lint + tests).
+Delivered: skeleton and CI; system under test (`sut/`) with its three switchable regressions — see [sut/README.en.md](sut/README.en.md). Next: common schema, JMeter adapter and KPIs.
 
 ## License
 
