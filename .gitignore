@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+/build/
+/dist/
+/.venv/
+
+# Tooling (anchored to the root: committed fixtures such as fixtures/**/*.jtl must stay trackable)
+/.pytest_cache/
+/.ruff_cache/
+/.coverage
+/coverage.xml
+/htmlcov/
+/reports/
+/results/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local working files (kept out of the public repository)
+/CLAUDE.md
+/MISSION.md
+/MISSION-AMENDEMENTS.md
+/PROMPT-LANCEMENT.md

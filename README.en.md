@@ -1,0 +1,43 @@
+# loadlens
+
+**A reasoned performance verdict from JMeter and LoadRunner results: PASS / WARN / FAIL backed by
+statistics, not by a single threshold.**
+
+[![CI](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml/badge.svg)](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-1%20passing-brightgreen?logo=pytest)](tests/)
+[![Python](https://img.shields.io/badge/python-3.13%2B-blue?logo=python)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+
+> 🇫🇷 [Version française](README.md)
+
+> 🚧 **Under construction.** No feature is delivered yet: this page describes the v1 goal. The
+> actual state is tracked in the [CHANGELOG](CHANGELOG.md).
+
+## The problem
+
+A load test produces thousands of measurements, yet the question "is this build slower than the
+previous one?" is often settled on a single number compared to a threshold, or by eye on a chart.
+On shared cloud machines, performance measurements can vary widely:
+[Laaber et al. (2019)](https://research.chalmers.se/publication/511491) measured coefficients of
+variation ranging from 0.03% to over 100% depending on the benchmark and the instance. A single
+threshold then blocks healthy changes, or lets a real regression through.
+
+## What loadlens will do (v1)
+
+- Run an **Apache JMeter** load test in CI against a bundled system under test whose regressions
+  can be switched on.
+- Ingest results from **OpenText Performance Engineering for Developers** (formerly LoadRunner
+  Developer, DevWeb scripts) produced locally.
+- Normalize both into one common schema and compute KPIs: latency percentiles, error rate,
+  throughput, Apdex, stability.
+- Compare a candidate run against a baseline executed on the same machine, and emit a
+  **PASS / WARN / FAIL / INCONCLUSIVE** verdict with its reasons.
+- Publish a CI job summary and a trend page.
+
+## Status
+
+Current step: project skeleton and CI (lint + tests).
+
+## License
+
+[MIT](LICENSE)
