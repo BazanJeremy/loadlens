@@ -4,7 +4,7 @@
 fondé sur la statistique, pas sur un seuil isolé.**
 
 [![CI](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml/badge.svg)](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-92%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-110%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.13%2B-blue?logo=python)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -36,7 +36,7 @@ Un seuil isolé bloque alors des changements sains, ou laisse passer une vraie r
 
 ## Statut
 
-Livré : squelette et CI ; système testé (`sut/`) avec ses trois régressions activables — voir [sut/README.md](sut/README.md) ; schéma commun, lecture des fichiers JTL de JMeter et calcul des KPI — voir [docs/kpi.md](docs/kpi.md). Étape suivante : JMeter dans la CI.
+Livré : squelette et CI ; système testé (`sut/`) avec ses trois régressions activables — voir [sut/README.md](sut/README.md) ; schéma commun, lecture des fichiers JTL de JMeter et calcul des KPI — voir [docs/kpi.md](docs/kpi.md) ; test de charge JMeter exécuté dans la CI — voir [load/jmeter/README.md](load/jmeter/README.md). Étape suivante : calibration statistique de la comparaison.
 
 ## Licence
 
