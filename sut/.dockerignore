@@ -1,0 +1,5 @@
+tests/
+tools/
+README*.md
+**/__pycache__/
+**/*.pyc

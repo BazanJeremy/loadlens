@@ -1,0 +1,48 @@
+# System under test: Postgres, a one-shot deterministic seed, and the payments API.
+#   docker compose up -d --wait            nominal run (the seed reloads the data on every up)
+#   $env:SUT_REGRESSION_N_PLUS_ONE = "1"   then up again to switch a regression on (PowerShell)
+name: loadlens-sut
+
+x-sut-env: &sut-env
+  DATABASE_URL: postgresql+psycopg://sut:sut@db:5432/payments
+
+services:
+  db:
+    image: postgres:18.6-alpine3.24@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    environment:
+      POSTGRES_USER: sut
+      POSTGRES_PASSWORD: sut
+      POSTGRES_DB: payments
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sut -d payments"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  seed:
+    build: ./sut
+    command: ["python", "-m", "payments_api.seed"]
+    environment:
+      <<: *sut-env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: ./sut
+    environment:
+      <<: *sut-env
+      SUT_REGRESSION_N_PLUS_ONE: ${SUT_REGRESSION_N_PLUS_ONE:-0}
+      SUT_REGRESSION_LOCK: ${SUT_REGRESSION_LOCK:-0}
+      SUT_REGRESSION_POOL: ${SUT_REGRESSION_POOL:-0}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
