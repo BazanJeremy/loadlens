@@ -12,7 +12,9 @@ license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Jérémy Bazan" }]
 dependencies = [
+    "numpy==2.5.3",
     "pydantic==2.13.5",
+    "scipy==1.18.1",
 ]
 
 [project.optional-dependencies]
