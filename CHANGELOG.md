@@ -38,3 +38,17 @@ Bugs caught by the test suite are logged with their cause and fix in
   120 s hold), KPIs computed from the JTL, JTL, log and KPIs kept as artifacts for 14 days.
 - JMeter plan documentation (`load/jmeter/README.en.md`): parameters, best practices applied,
   first local measurement of the CI profile.
+- Baseline versus candidate comparison (`loadlens.compare`): one-sided Mann-Whitney U, exact
+  Cliff's delta, relative Δp95, the same tests on 5 s window p95 values, and a moving-block
+  bootstrap interval of Δp95, per transaction.
+- A-B-B-A protocol on one machine (`load/abba.sh`): database reloaded and API recreated before
+  each segment, host wall clock recorded per segment.
+- Detector calibration (`python -m loadlens.calibration`, manual `Calibration` workflow): false
+  positives on A/A runs with an exact 95% upper bound, power per regression, baseline self-check,
+  runs excluded with their reason. Protocol and pre-declared criteria in `docs/calibration.md`.
+
+### Fixed
+
+- The JMeter container no longer waits 60 s after each test: JMeter 5.6.3's open model keeps idle
+  non-daemon threads for a minute; `load/jmeter/entrypoint.sh` returns at `... end of run`
+  (132 s instead of 192 s for the CI profile, JTL complete).
