@@ -17,7 +17,7 @@ from collections.abc import Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from loadlens.schema import Run, TransactionAggregate
+from loadlens.schema import Run, Samples, TransactionAggregate
 
 PERCENTILES = (50, 90, 95, 99)
 DEFAULT_APDEX_T_MS = 300
@@ -112,7 +112,33 @@ def _from_aggregate(agg: TransactionAggregate) -> Kpis:
     )
 
 
+def drop_warmup(run: Run, warmup_s: float) -> Run:
+    """Leave out the samples that started during the first `warmup_s` seconds, counted from the
+    earliest sample. Metadata, including `started_at`, is unchanged."""
+    if warmup_s < 0:
+        raise ValueError(f"warm-up must be >= 0 seconds, got {warmup_s}")
+    if warmup_s == 0:
+        return run
+    if run.samples is None:
+        raise ValueError("a warm-up cannot be removed from a run that only has aggregates")
+    samples = run.samples
+    if not len(samples):
+        return run
+    cutoff = min(samples.start_ms) + warmup_s * 1000
+    keep = [i for i, start in enumerate(samples.start_ms) if start >= cutoff]
+    trimmed = Samples(
+        start_ms=[samples.start_ms[i] for i in keep],
+        elapsed_ms=[samples.elapsed_ms[i] for i in keep],
+        transaction=[samples.transaction[i] for i in keep],
+        success=[samples.success[i] for i in keep],
+        response_code=[samples.response_code[i] for i in keep],
+    )
+    return run.model_copy(update={"samples": trimmed})
+
+
 def compute(run: Run, apdex_t_ms: int = DEFAULT_APDEX_T_MS) -> RunKpis:
+    if apdex_t_ms <= 0:
+        raise ValueError(f"Apdex threshold must be > 0 ms, got {apdex_t_ms}")
     if run.aggregates is not None:
         return _compute_from_aggregates(run.aggregates, apdex_t_ms)
 

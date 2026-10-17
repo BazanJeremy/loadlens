@@ -29,8 +29,21 @@ rows. `None` always means "not computable from this run", never zero.
   overall percentiles stay `None`: they cannot be derived from per-transaction percentiles.
 - **Latency is JMeter's `elapsed`** (time to last byte), not `Latency` (time to first byte).
 
+## Warm-up
+
+`drop_warmup` (CLI: `--warmup-s`) leaves out the samples that started during the first N seconds,
+counted from the earliest sample. The CI passes the plan's ramp duration, so KPIs describe the
+hold phase only.
+
+## Resolution
+
+JTL latencies are whole milliseconds (JMeter manual, 12.4). Measured locally on 2026-10-17, the
+nominal p95 of the CI profile is 9 ms (`load/jmeter/README.en.md`): a 10% change of it (0.9 ms)
+is below that resolution.
+
 ## What `cv` is not (yet)
 
 `cv` describes the spread of one run's latencies. Whether it is the right stability criterion
-for the INCONCLUSIVE verdict (raw latencies are long-tailed) is decided by measurement in the
-statistical calibration step, not here.
+for the INCONCLUSIVE verdict is decided by measurement in the statistical calibration step, not
+here. First measurement (local, 2026-10-17, nominal run of the CI profile): raw-latency CV of
+0.47 overall and 0.32 to 0.38 per transaction, far above a 15% threshold on a healthy run.
