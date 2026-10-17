@@ -72,13 +72,19 @@ Source: run of the `jmeter (short profile)` job on PR #2 (artifact `jmeter-resul
   to 0.42 per transaction — the same order as locally.
 - Whole job: 4 min 52 s, of which 192 s for the JMeter step.
 
-## 60 s wait when JMeter exits
+## 60 s wait when JMeter exits (cause found, worked around)
 
-The JMeter container stops about 60 s after the end of the test (`... end of run`), whatever the
-run length: 192 s for a 130 s schedule, locally and in CI, and a 59.5 s wait after a 5 s run.
-JMeter's built-in check (`-Jjmeter.exit.check.pause=5000`) reports no blocking thread, and the
-launcher script does nothing after calling Java. **Cause unknown.** Cost: one minute per JMeter
-launch.
+The JMeter container used to stop about 60 s after the end of the test (`... end of run`),
+whatever the run length: 192 s for a 130 s schedule, locally and in CI. A JVM thread dump taken
+during the wait (2026-10-17) shows three non-daemon threads still alive,
+`open-model-thread-starter-…`. JMeter 5.6.3 creates them in an `Executors.newCachedThreadPool()`
+that is never shut down (`OpenModelThreadGroup.kt`, line 86); idle threads of such a pool only
+end after sixty seconds. JMeter's built-in check (`-Jjmeter.exit.check.pause=5000`) had not
+reported them.
+
+`entrypoint.sh` relays JMeter's output and returns at `... end of run`; stopping the container
+ends the JVM. Measured on 2026-10-17: 132 s instead of 192 s for the CI profile, with a complete
+JTL (2,500 rows, as many as JMeter's own total).
 
 ## Limits
 
