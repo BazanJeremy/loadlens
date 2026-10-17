@@ -21,3 +21,13 @@ Bugs caught by the test suite are logged with their cause and fix in
 - Switchable regressions, off by default: `SUT_REGRESSION_N_PLUS_ONE`, `SUT_REGRESSION_LOCK`,
   `SUT_REGRESSION_POOL`. Hand measurements of their effect: `sut/README.en.md`.
 - Functional test suite of the SUT, run in CI once per regression mode.
+- Common result schema (`loadlens.schema.Run`): raw column-oriented samples **or**
+  per-transaction aggregates, unknown values as `None` (ADR-002, proposed).
+- JMeter JTL (CSV) adapter (`loadlens.adapters.jmeter.read_jtl`), reading columns by header
+  name and rejecting malformed files with the offending line number.
+- KPIs (`loadlens.kpi.compute`): nearest-rank p50/p90/p95/p99, error rate, throughput, Apdex,
+  CV, overall and per transaction; definitions in `docs/kpi.md`.
+- JMeter 5.6.3 runner image (`load/jmeter/Dockerfile`, archive checksum verified) and a first
+  open-model plan (`load/jmeter/loadlens.jmx`), used to record real JTL fixtures
+  (`fixtures/jmeter/`, provenance in `PROVENANCE.md`).
+- ADR-001 (LoadRunner results ingested, not executed, in CI), proposed.
