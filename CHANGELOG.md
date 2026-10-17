@@ -31,3 +31,10 @@ Bugs caught by the test suite are logged with their cause and fix in
   open-model plan (`load/jmeter/loadlens.jmx`), used to record real JTL fixtures
   (`fixtures/jmeter/`, provenance in `PROVENANCE.md`).
 - ADR-001 (LoadRunner results ingested, not executed, in CI), proposed.
+- `loadlens kpi` command (also `python -m loadlens`): KPIs of a JTL as JSON, with run metadata
+  (tool version, load profile, machine) and `--warmup-s` to leave out the ramp. Exit code 4 for
+  unusable input; 1 to 3 are reserved for verdicts.
+- CI job `jmeter (short profile)`: SUT in containers, JMeter 5.6.3 in CLI mode (10 s ramp,
+  120 s hold), KPIs computed from the JTL, JTL, log and KPIs kept as artifacts for 14 days.
+- JMeter plan documentation (`load/jmeter/README.en.md`): parameters, best practices applied,
+  first local measurement of the CI profile.

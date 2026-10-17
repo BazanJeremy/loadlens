@@ -4,7 +4,7 @@
 statistics, not by a single threshold.**
 
 [![CI](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml/badge.svg)](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-92%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-110%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.13%2B-blue?logo=python)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -36,7 +36,7 @@ threshold then blocks healthy changes, or lets a real regression through.
 
 ## Status
 
-Delivered: skeleton and CI; system under test (`sut/`) with its three switchable regressions — see [sut/README.en.md](sut/README.en.md); common schema, JMeter JTL reading and KPI computation — see [docs/kpi.md](docs/kpi.md). Next: JMeter in CI.
+Delivered: skeleton and CI; system under test (`sut/`) with its three switchable regressions — see [sut/README.en.md](sut/README.en.md); common schema, JMeter JTL reading and KPI computation — see [docs/kpi.md](docs/kpi.md); JMeter load test run in CI — see [load/jmeter/README.en.md](load/jmeter/README.en.md). Next: statistical calibration of the comparison.
 
 ## License
 

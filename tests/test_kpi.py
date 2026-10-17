@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from loadlens.adapters.jmeter import read_jtl
-from loadlens.kpi import apdex, compute, nearest_rank
+from loadlens.kpi import apdex, compute, drop_warmup, nearest_rank
 from loadlens.schema import Run, RunMetadata, Samples, Tool, TransactionAggregate
 
 META = RunMetadata(tool=Tool.JMETER, source_file="x", started_at=datetime(2026, 1, 1, tzinfo=UTC))
@@ -148,6 +148,44 @@ def test_zero_length_window_gives_no_throughput():
 def test_custom_apdex_threshold_is_recorded():
     kpis = compute(run_of([400]), apdex_t_ms=500)
     assert (kpis.apdex_t_ms, kpis.overall.apdex) == (500, 1.0)
+
+
+# --- warm-up ---------------------------------------------------------------------------------
+
+
+def test_drop_warmup_keeps_samples_started_at_or_after_the_cutoff():
+    run = run_of([1, 2, 3, 4], start=[1000, 1999, 2000, 3500], transaction=["a", "b", "c", "d"])
+    trimmed = drop_warmup(run, 1.0)  # cut-off = 1000 + 1000 ms
+    assert trimmed.samples.transaction == ["c", "d"]
+    assert trimmed.samples.elapsed_ms == [3, 4]
+    assert trimmed.metadata == run.metadata
+
+
+def test_zero_warmup_returns_the_run_unchanged():
+    run = run_of([1, 2])
+    assert drop_warmup(run, 0) is run
+
+
+def test_warmup_longer_than_the_run_leaves_no_sample():
+    assert len(drop_warmup(run_of([1, 2], start=[0, 100]), 5).samples) == 0
+
+
+def test_negative_warmup_is_rejected():
+    with pytest.raises(ValueError, match="warm-up must be >= 0"):
+        drop_warmup(run_of([1]), -1)
+
+
+def test_warmup_cannot_be_removed_from_aggregates():
+    run = Run(
+        metadata=META, aggregates=[TransactionAggregate(transaction="a", count=1, error_count=0)]
+    )
+    with pytest.raises(ValueError, match="only has aggregates"):
+        drop_warmup(run, 1)
+
+
+def test_non_positive_apdex_threshold_is_rejected():
+    with pytest.raises(ValueError, match="Apdex threshold"):
+        compute(run_of([1]), apdex_t_ms=0)
 
 
 # --- aggregate-only runs ---------------------------------------------------------------------

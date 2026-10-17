@@ -64,3 +64,77 @@ jobs:
       - name: Stop the system under test
         if: always()
         run: docker compose down -v
+
+  jmeter:
+    # Short load test against the SUT. Proves the CI produces a JTL that loadlens can read;
+    # the baseline/candidate verdict comes later.
+    name: jmeter (short profile)
+    runs-on: ubuntu-24.04
+    needs: lint-and-test
+    timeout-minutes: 20
+    env:
+      JMETER_VERSION: "5.6.3"
+      RAMP_S: "10"
+      HOLD_S: "120"
+      RATE_CREATE_PAYMENT: "4"
+      RATE_GET_PAYMENT: "10"
+      RATE_GET_STATEMENT: "6"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.16"
+      - name: Install loadlens
+        run: python -m pip install -e .
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the JMeter image (layers cached between runs)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: load/jmeter
+          tags: loadlens-jmeter:${{ env.JMETER_VERSION }}
+          load: true
+          cache-from: type=gha,scope=jmeter
+          cache-to: type=gha,scope=jmeter,mode=max
+      - name: Start the system under test
+        run: docker compose up -d --build --wait
+      - name: Run JMeter (CLI mode)
+        run: |
+          mkdir -p results && chmod 777 results
+          docker run --rm --network loadlens-sut_default \
+            -v "$PWD/load/jmeter:/plan:ro" -v "$PWD/results:/out" \
+            "loadlens-jmeter:$JMETER_VERSION" \
+            -n -t /plan/loadlens.jmx -q /plan/loadlens.properties \
+            -l /out/jmeter.jtl -j /out/jmeter.log -Jhost=api \
+            -Jramp_s="$RAMP_S" -Jhold_s="$HOLD_S" \
+            -Jrate_create_payment="$RATE_CREATE_PAYMENT" \
+            -Jrate_get_payment="$RATE_GET_PAYMENT" \
+            -Jrate_get_statement="$RATE_GET_STATEMENT"
+      - name: KPIs from the JTL (warm-up excluded)
+        run: |
+          loadlens kpi results/jmeter.jtl \
+            --tool-version "$JMETER_VERSION" --warmup-s "$RAMP_S" \
+            --profile ramp_s="$RAMP_S" --profile hold_s="$HOLD_S" \
+            --profile rate_create_payment="$RATE_CREATE_PAYMENT" \
+            --profile rate_get_payment="$RATE_GET_PAYMENT" \
+            --profile rate_get_statement="$RATE_GET_STATEMENT" \
+            --os "$(. /etc/os-release && echo "$PRETTY_NAME")" \
+            --cpu-model "$(lscpu | sed -n 's/^Model name: *//p')" \
+            --cpu-count "$(nproc)" \
+            | tee results/kpis.json
+          jq -e '.kpis.overall.count > 0' results/kpis.json > /dev/null
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jmeter-results
+          path: results/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Stop the system under test
+        if: always()
+        run: docker compose down -v
