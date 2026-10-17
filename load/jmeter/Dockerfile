@@ -13,6 +13,8 @@ RUN set -eux; \
     useradd --create-home --uid 10001 jmeter
 
 ENV PATH="/opt/apache-jmeter-${JMETER_VERSION}/bin:${PATH}"
+# Returns when the test is over instead of a minute later (see the script's header).
+COPY --chmod=0755 entrypoint.sh /usr/local/bin/run-jmeter
 USER jmeter
 WORKDIR /work
-ENTRYPOINT ["jmeter"]
+ENTRYPOINT ["run-jmeter"]

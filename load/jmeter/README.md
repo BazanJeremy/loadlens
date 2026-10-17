@@ -73,13 +73,19 @@ Source : run du job `jmeter (short profile)` sur la PR #2 (artefact `jmeter-resu
   global, 0,35 à 0,42 par transaction — même ordre qu'en local.
 - Job complet : 4 min 52 s, dont 192 s pour l'étape JMeter.
 
-## Attente de 60 s à la sortie de JMeter
+## Attente de 60 s à la sortie de JMeter (cause trouvée, contournée)
 
-Le conteneur JMeter s'arrête environ 60 s après la fin du test (`... end of run`), quelle que soit
-la durée du run : 192 s pour 130 s de planning, en local comme en CI, et 59,5 s d'attente sur un
-run de 5 s. Le contrôle intégré de JMeter (`-Jjmeter.exit.check.pause=5000`) ne signale aucun fil
-bloquant, et le script de lancement ne fait rien après l'appel à Java. **Cause inconnue.** Coût :
-une minute par lancement de JMeter.
+Le conteneur JMeter s'arrêtait environ 60 s après la fin du test (`... end of run`), quelle que
+soit la durée du run : 192 s pour 130 s de planning, en local comme en CI. Un dump des fils de la
+JVM pris pendant l'attente (17/10/2026) montre trois fils non-démons encore vivants,
+`open-model-thread-starter-…`. Le code de JMeter 5.6.3 les crée dans un
+`Executors.newCachedThreadPool()` jamais arrêté (`OpenModelThreadGroup.kt`, ligne 86) ; les fils
+inactifs d'un tel pool ne disparaissent qu'après soixante secondes. Le contrôle intégré de JMeter
+(`-Jjmeter.exit.check.pause=5000`) ne les avait pas signalés.
+
+`entrypoint.sh` relaie la sortie de JMeter et rend la main dès `... end of run` ; l'arrêt du
+conteneur termine la JVM. Mesuré le 17/10/2026 : 132 s au lieu de 192 s pour le profil CI, avec
+un JTL complet (2 500 lignes, autant que le total annoncé par JMeter).
 
 ## Limites
 
