@@ -46,6 +46,10 @@ Bugs caught by the test suite are logged with their cause and fix in
 - Detector calibration (`python -m loadlens.calibration`, manual `Calibration` workflow): false
   positives on A/A runs with an exact 95% upper bound, power per regression, baseline self-check,
   runs excluded with their reason. Protocol and pre-declared criteria in `docs/calibration.md`.
+- Calibration results on the CI runners (60 A/A runs, 5 per regression) in `docs/calibration.md`:
+  windowed detector retained, false positives 1/60 (95% upper bound 7.7%), N+1 detected in 5 runs
+  out of 5, no stability gate. ADR-003 (A-B-B-A protocol on one machine) and ADR-004 (windowed
+  regression detector), proposed.
 
 ### Fixed
 

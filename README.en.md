@@ -36,7 +36,7 @@ threshold then blocks healthy changes, or lets a real regression through.
 
 ## Status
 
-Delivered: skeleton and CI; system under test (`sut/`) with its three switchable regressions — see [sut/README.en.md](sut/README.en.md); common schema, JMeter JTL reading and KPI computation — see [docs/kpi.md](docs/kpi.md); JMeter load test run in CI — see [load/jmeter/README.en.md](load/jmeter/README.en.md). Next: statistical calibration of the comparison.
+Delivered: skeleton and CI; system under test (`sut/`) with its three switchable regressions — see [sut/README.en.md](sut/README.en.md); common schema, JMeter JTL reading and KPI computation — see [docs/kpi.md](docs/kpi.md); JMeter load test run in CI — see [load/jmeter/README.en.md](load/jmeter/README.en.md); baseline versus candidate comparison, with its regression detector calibrated on the CI runners (1 false positive out of 60 healthy runs, N+1 regression caught in 5 runs out of 5) — see [docs/calibration.md](docs/calibration.md). Next: the verdict and the CI gate.
 
 ## License
 

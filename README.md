@@ -36,7 +36,7 @@ Un seuil isolé bloque alors des changements sains, ou laisse passer une vraie r
 
 ## Statut
 
-Livré : squelette et CI ; système testé (`sut/`) avec ses trois régressions activables — voir [sut/README.md](sut/README.md) ; schéma commun, lecture des fichiers JTL de JMeter et calcul des KPI — voir [docs/kpi.md](docs/kpi.md) ; test de charge JMeter exécuté dans la CI — voir [load/jmeter/README.md](load/jmeter/README.md). Étape suivante : calibration statistique de la comparaison.
+Livré : squelette et CI ; système testé (`sut/`) avec ses trois régressions activables — voir [sut/README.md](sut/README.md) ; schéma commun, lecture des fichiers JTL de JMeter et calcul des KPI — voir [docs/kpi.md](docs/kpi.md) ; test de charge JMeter exécuté dans la CI — voir [load/jmeter/README.md](load/jmeter/README.md) ; comparaison d'une référence et d'un candidat, avec un détecteur de régression calibré sur les machines de la CI (1 faux positif sur 60 exécutions saines, régression N+1 détectée dans 5 exécutions sur 5) — voir [docs/calibration.md](docs/calibration.md). Étape suivante : le verdict et le contrôle bloquant de la CI.
 
 ## Licence
 
