@@ -82,9 +82,55 @@ What the pilot already showed:
   JTL timestamps cannot reveal a suspended host; `load/abba.sh` now records each segment's host
   wall clock, and the analysis excludes a segment that ran far beyond its schedule.
 
-## CI campaign
+## CI campaign (2026-10-17)
 
-Not run yet. Its size and its runner depend on two open decisions: the repository's visibility
-(GitHub's standard Linux runner has 2 CPUs and 8 GB for a private repository, 4 CPUs and 16 GB
-for a public one, where minutes are also free — GitHub documentation, read on 2026-10-17) and the
-number of A/A runs (at least 59 to claim FPR ≤ 5%).
+Source: `Calibration` workflow, run
+[39058130424](https://github.com/BazanJeremy/loadlens/actions/runs/39058130424) on commit
+`873e08a`, 77 jobs out of 77 successful; figures from its `calibration-report` artifact
+(`calibration.json`), read on 2026-10-18. 60 A/A runs and 5 runs per regression, 60 s hold. All 75
+runs ran on 4-CPU `ubuntu-24.04` runners (`cpu_count` recorded in every run; the repository is
+public). No run was excluded.
+
+| Detector | A/A runs flagged | FPR upper bound (95%) | A/A inconsistent | N+1 detected (inconsistent) | LOCK detected (inconsistent) | POOL detected (inconsistent) |
+|---|---|---|---|---|---|---|
+| mission | 2/60 | 10.1% | 14/60 | 5/5 (1) | 4/5 (2) | 0/5 (2) |
+| windowed | 1/60 | 7.7% | 13/60 | 5/5 (0) | 3/5 (0) | 2/5 (0) |
+| bootstrap strict | 1/60 | 7.7% | 4/60 | 5/5 (0) | 1/5 (0) | 0/5 (0) |
+| bootstrap | 1/60 | 7.7% | 5/60 | 5/5 (0) | 3/5 (0) | 0/5 (0) |
+
+### The declared criteria, applied as written
+
+1. **Eligible: windowed, bootstrap strict and bootstrap.** The mission detector is not: in run
+   `N_PLUS_ONE-5` it also fires between the two baseline segments, so that run would end
+   INCONCLUSIVE instead of FAIL.
+2. **No detector can claim "FPR ≤ 5%".** None reached 0 flagged A/A runs; the lowest count is
+   1/60, an upper bound of 7.7%.
+3. **Chosen: windowed**, with 5 LOCK and POOL runs detected out of 10, against 3 for bootstrap and
+   1 for bootstrap strict.
+4. **The self-check gate is not adopted.** With the windowed detector it makes 13 A/A runs out of
+   60 inconsistent, above the declared limit of 1 in 10. The stability criterion stays open and
+   goes back to the maintainer.
+
+**Decision (maintainer, 2026-10-18):** the windowed detector, its false-positive rate stated as
+measured (1/60, upper bound 7.7%), and no self-check gate: run stability is not a reason for
+INCONCLUSIVE until an instrument passes a calibration declared beforehand. Rationale and options:
+[ADR-004](adr/ADR-004-windowed-regression-detector.md); protocol:
+[ADR-003](adr/ADR-003-abba-protocol-on-one-machine.md).
+
+### What else the campaign shows
+
+- **N+1 stands out in every run**: `get_statement` p95 goes from 6–9 ms to 31–52 ms (+417% to
+  +550%), with a raw Cliff's δ of 0.998 or more in all five runs.
+- **LOCK raises the `create_payment` p95 by +12% to +22%** in four runs out of five. In `LOCK-4`
+  the candidate p95 is lower (12 → 8 ms); cause unknown.
+- **The windowed detector's only false positive and its two POOL detections are the same
+  one-millisecond step**: `get_statement` p95 6 → 7 ms (+17%) in `aa-51`, `POOL-3` and `POOL-4`.
+  This campaign therefore does not establish that POOL is detected. Without those two runs,
+  windowed and bootstrap would tie on LOCK (3/5 each), and the declared tie-break, the mission
+  detector, would not settle it: mission is not eligible.
+- **In `aa-51`, all three transactions moved together** between the A and B arms (raw Cliff's δ
+  +0.217 to +0.261), although both arms run the same code. Cause unknown.
+- **The bootstrap false positive** (`aa-15`) is a `create_payment` p95 of 7 → 12 ms (+71%) with a
+  raw Cliff's δ of +0.061.
+- **A/A stability**, per transaction and segment: raw-latency CV median 0.270, 95th percentile
+  1.031, max 3.970; CV of the 5 s window p95 median 0.175, max 2.032.
