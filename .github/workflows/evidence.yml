@@ -1,0 +1,113 @@
+name: Evidence
+
+# Runs each switchable regression, and an A/A run, through `loadlens verdict` on the CI runners
+# and lists the verdicts in the job summary. Started by hand: the outcome of LOCK and POOL is
+# recorded as detected or not detected (docs/verdict.md), never asserted by a check, because the
+# calibration did not establish that they are always detected (ADR-004).
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "A-B-B-A runs per mode (none, N_PLUS_ONE, LOCK, POOL), 1-5"
+        default: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        env:
+          RUNS: ${{ inputs.runs }}
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, os
+          n = int(os.environ["RUNS"])
+          if not 1 <= n <= 5:
+              raise SystemExit("runs must be 1-5")
+          runs = [{"id": f"{m}-{i}", "mode": m}
+                  for m in ("none", "N_PLUS_ONE", "LOCK", "POOL") for i in range(1, n + 1)]
+          print("matrix=" + json.dumps(runs))
+          EOF
+
+  abba:
+    needs: plan
+    name: verdict (${{ matrix.id }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.16"
+      - name: Install loadlens
+        run: python -m pip install -e .
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the JMeter image (layers cached between runs)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: load/jmeter
+          tags: loadlens-jmeter:5.6.3
+          load: true
+          cache-from: type=gha,scope=jmeter
+          cache-to: type=gha,scope=jmeter,mode=max
+      - name: Build the system under test
+        run: docker compose build
+      - name: A-B-B-A run
+        env:
+          CANDIDATE: ${{ matrix.mode }}
+          RUN_ID: ${{ matrix.id }}
+        run: bash load/abba.sh "$CANDIDATE" "results/$RUN_ID"
+      - name: Verdict (recorded, never fails the job)
+        env:
+          RUN_ID: ${{ matrix.id }}
+        run: |
+          loadlens verdict --config config/slo.yaml --abba "results/$RUN_ID" \
+            --json "results/$RUN_ID/verdict.json" || true
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Keep the run
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-${{ matrix.id }}
+          path: results/
+          retention-days: 90
+          if-no-files-found: warn
+      - name: Stop the system under test
+        if: always()
+        run: docker compose down -v
+
+  summary:
+    needs: abba
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: evidence-*
+          path: runs
+          merge-multiple: true
+      - name: Verdicts
+        run: |
+          python3 - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          print("| run | verdict | reasons |\n|---|---|---|")
+          for path in sorted(pathlib.Path("runs").glob("*/verdict.json")):
+              v = json.loads(path.read_text(encoding="utf-8"))
+              reasons = sorted({f"{r['level']} {r['check']} {r['transaction'] or 'run'}"
+                                for r in v["reasons"]})
+              print(f"| {path.parent.name} | {v['level']} | {', '.join(reasons) or '-'} |")
+          EOF
