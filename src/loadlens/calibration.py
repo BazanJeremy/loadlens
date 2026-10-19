@@ -24,6 +24,10 @@ from loadlens.schema import Run
 EFFECT_THRESHOLD = 0.10  # relative p95 increase (mission default)
 DELTA_THRESHOLD = 0.147  # |Cliff's delta| "small" boundary (Romano et al. 2006)
 ALPHA = 0.05
+# Absolute p95 increase, declared on 2026-10-19 before the second campaign (docs/calibration.md):
+# a JTL elapsed time is the difference of two millisecond timestamps, so clock truncation alone
+# can move a p95 difference by 1 ms, never by 2.
+FLOOR_MS = 2
 
 # Transactions each regression is expected to slow down (sut/README.en.md).
 EXPECTED = {
@@ -45,6 +49,23 @@ def _ge(value: float | None, threshold: float) -> bool:
     return value is not None and value >= threshold
 
 
+def _floored(c: TransactionComparison) -> list[bool]:
+    """The windowed conditions, the effect one with the absolute floor added."""
+    rise = (
+        c.p95_candidate_ms - c.p95_baseline_ms
+        if c.p95_candidate_ms is not None and c.p95_baseline_ms is not None
+        else None
+    )
+    return [
+        _lt(c.windowed_p_value, ALPHA),
+        _gt(c.delta_p95_rel, EFFECT_THRESHOLD) and _ge(rise, FLOOR_MS),
+        _ge(c.windowed_cliffs_delta, DELTA_THRESHOLD),
+    ]
+
+
+WINDOWED = "windowed: p<0.05 & dp95>+10% & delta>=0.147"
+FLOORED = f"windowed + floor: p<0.05 & dp95>+10% and >={FLOOR_MS} ms & delta>=0.147"
+
 DETECTORS: dict[str, Callable[[TransactionComparison], bool]] = {
     "mission: raw p<0.05 & dp95>+10% & delta>=0.147": lambda c: (
         _lt(c.raw_p_value, ALPHA)
@@ -60,6 +81,9 @@ DETECTORS: dict[str, Callable[[TransactionComparison], bool]] = {
     "bootstrap: 5th pct > 0 & dp95 > +10%": lambda c: (
         _gt(c.bootstrap_delta_p95_low, 0.0) and _gt(c.delta_p95_rel, EFFECT_THRESHOLD)
     ),
+    FLOORED: lambda c: all(_floored(c)),
+    # The verdict's WARN rule with the floor: a run flagged here but not above ends WARN.
+    "windowed + floor: at least 2 of its 3 conditions": lambda c: sum(_floored(c)) >= 2,
     # Single conditions, to see which one carries the false positives.
     "component: raw p<0.05": lambda c: _lt(c.raw_p_value, ALPHA),
     "component: dp95 > +10%": lambda c: _gt(c.delta_p95_rel, EFFECT_THRESHOLD),
@@ -75,6 +99,15 @@ def clopper_pearson_upper(events: int, trials: int, confidence: float = 0.95) ->
     if events >= trials:
         return 1.0
     return float(beta.ppf(confidence, events + 1, trials - events))
+
+
+def clopper_pearson_lower(events: int, trials: int, confidence: float = 0.95) -> float:
+    """One-sided exact lower bound of a proportion, e.g. of a detection rate."""
+    if trials <= 0:
+        raise ValueError("no trials")
+    if events <= 0:
+        return 0.0
+    return float(beta.ppf(1 - confidence, events, trials - events + 1))
 
 
 SEGMENT_SLACK_S = 30  # a segment may run this much longer than its schedule before it is suspect
@@ -155,12 +188,22 @@ def _both_ways(arm: Sequence[Run], options: dict) -> list[list[TransactionCompar
     ]
 
 
-def analyze(directories: Sequence[Path], *, window_s: float = 5.0, replicates: int = 2000) -> dict:
+def analyze(
+    directories: Sequence[Path],
+    *,
+    window_s: float = 5.0,
+    replicates: int = 2000,
+    expected_cpus: int | None = None,
+) -> dict:
+    """`expected_cpus`: exclude, with the reason, a run recorded on a runner with another CPU
+    count (the figures only hold for the machine they were measured on)."""
     runs = []
     excluded = []
     for directory in directories:
         try:
             meta, baseline, candidate = load_abba(directory)
+            if expected_cpus is not None and meta.get("cpu_count") != expected_cpus:
+                raise UnusableRun(f"cpu_count {meta.get('cpu_count')}, expected {expected_cpus}")
         except UnusableRun as reason:
             excluded.append({"directory": directory.name, "reason": str(reason)})
             continue
@@ -219,8 +262,24 @@ def analyze(directories: Sequence[Path], *, window_s: float = 5.0, replicates: i
                 detected = sum(1 for r in mode_runs if expected & set(r["flags"][name]))
                 inconsistent = sum(1 for r in mode_runs if r["inconsistent"][name])
                 entry[f"detected_{mode}"] = f"{detected}/{len(mode_runs)}"
+                entry[f"detected_{mode}_lower_95"] = clopper_pearson_lower(detected, len(mode_runs))
                 entry[f"inconsistent_{mode}"] = inconsistent
         detectors[name] = entry
+
+    # What the floor costs and buys: every transaction the windowed detector flags and the
+    # floored one does not, with its p95 change.
+    floor_removed = [
+        {
+            "directory": r["directory"],
+            "candidate": r["candidate"],
+            "transaction": c["transaction"],
+            "p95_baseline_ms": c["p95_baseline_ms"],
+            "p95_candidate_ms": c["p95_candidate_ms"],
+        }
+        for r in runs
+        for c in r["comparisons"]
+        if c["transaction"] in set(r["flags"][WINDOWED]) - set(r["flags"][FLOORED])
+    ]
 
     aa_stability = {
         key: sorted(v for r in aa for v in r["stability"][key])
@@ -230,6 +289,7 @@ def analyze(directories: Sequence[Path], *, window_s: float = 5.0, replicates: i
         "runs": runs,
         "excluded": excluded,
         "detectors": detectors,
+        "floor_removed": floor_removed,
         "aa_stability": aa_stability,
     }
 
@@ -279,8 +339,19 @@ def render_markdown(report: dict) -> str:
         ]
         lines.append(f"| {name} | " + " | ".join(aa_cells + cells) + " |")
     if report["excluded"]:
-        lines += ["", "## Excluded runs", ""]
+        total = len(report["runs"]) + len(report["excluded"])
+        lines += ["", "## Excluded runs", "", f"{len(report['excluded'])} of {total} runs.", ""]
         lines += [f"- {e['directory']}: {e['reason']}" for e in report["excluded"]]
+    lines += ["", f"## Flagged by the windowed detector, not with the {FLOOR_MS} ms floor", ""]
+    if report["floor_removed"]:
+        lines += ["| Run | Candidate | Transaction | p95 A -> B (ms) |", "|---|---|---|---|"]
+        lines += [
+            f"| {f['directory']} | {f['candidate']} | {f['transaction']} | "
+            f"{f['p95_baseline_ms']:.0f} -> {f['p95_candidate_ms']:.0f} |"
+            for f in report["floor_removed"]
+        ]
+    else:
+        lines.append("None.")
     lines += [
         "",
         "## Stability indicators on A/A runs (per transaction and segment)",
@@ -317,8 +388,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("directories", nargs="+", type=Path)
     parser.add_argument("--json", type=Path, help="also write the full report as JSON")
     parser.add_argument("--replicates", type=int, default=2000)
+    parser.add_argument(
+        "--expected-cpus", type=int, help="exclude runs recorded with another CPU count"
+    )
     args = parser.parse_args(argv)
-    report = analyze(args.directories, replicates=args.replicates)
+    report = analyze(args.directories, replicates=args.replicates, expected_cpus=args.expected_cpus)
     if args.json:
         args.json.write_text(json.dumps(report, indent=2), encoding="utf-8")
     sys.stdout.write(render_markdown(report))

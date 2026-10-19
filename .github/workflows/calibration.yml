@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       aa_runs:
-        description: "A/A runs (the candidate is the baseline), 1-60"
+        description: "A/A runs (the candidate is the baseline), 1-200"
         default: "10"
       regression_runs:
         description: "Runs per regression (N_PLUS_ONE, LOCK, POOL), 0-10"
@@ -33,8 +33,9 @@ jobs:
           python3 - <<'EOF' >> "$GITHUB_OUTPUT"
           import json, os
           aa, rr = int(os.environ["AA_RUNS"]), int(os.environ["REGRESSION_RUNS"])
-          if not (1 <= aa <= 60 and 0 <= rr <= 10):
-              raise SystemExit("aa_runs must be 1-60 and regression_runs 0-10")
+          # At most 200 + 3 x 10 = 230 jobs: a matrix generates at most 256 per workflow run.
+          if not (1 <= aa <= 200 and 0 <= rr <= 10):
+              raise SystemExit("aa_runs must be 1-200 and regression_runs 0-10")
           runs = [{"id": f"aa-{i}", "mode": "none"} for i in range(1, aa + 1)]
           runs += [{"id": f"{m}-{i}", "mode": m}
                    for m in ("N_PLUS_ONE", "LOCK", "POOL") for i in range(1, rr + 1)]
@@ -107,7 +108,8 @@ jobs:
           merge-multiple: true
       - name: Analyze every completed run
         run: |
-          python -m loadlens.calibration runs/*/ --json calibration.json | tee calibration.md
+          python -m loadlens.calibration runs/*/ --expected-cpus 4 --json calibration.json \
+            | tee calibration.md
           cat calibration.md >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
