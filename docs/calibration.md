@@ -134,3 +134,73 @@ INCONCLUSIVE until an instrument passes a calibration declared beforehand. Ratio
   raw Cliff's δ of +0.061.
 - **A/A stability**, per transaction and segment: raw-latency CV median 0.270, 95th percentile
   1.031, max 3.970; CV of the 5 s window p95 median 0.175, max 2.032.
+
+## Second campaign: an absolute floor (criteria declared on 2026-10-19, before it runs)
+
+ADR-004 names the windowed detector's weakness: under a p95 of 10 ms, a +10% change is smaller
+than one millisecond, so the effect condition reduces to "one millisecond more". Every false FAIL
+seen since is such a step: `aa-51` above, and `none-3` in `Evidence` run 39241955097
+(`get_payment` p95 5 → 6 ms). So are the POOL detections (`POOL-3` and `POOL-4` above, `POOL-2` in
+that run). These runs prompted the floor, and any floor of 2 ms or more removes them by
+construction: **they cannot serve as its evidence.** Only this campaign does.
+
+### The floor, and why 2 ms
+
+The effect condition becomes: relative Δp95 above +10% **and** absolute Δp95 of at least 2 ms.
+The other two conditions do not change. With whole-millisecond p95 values, the floor changes
+nothing from a baseline p95 of 10 ms upwards, where more than +10% already means at least 2 ms:
+it only acts where the weakness is.
+
+The value comes from the clock, not from data. JMeter 5.6.3 timestamps the start and the end of a
+sample with `System.nanoTime() / 1000000` plus a fixed offset, and records their difference as the
+elapsed time (`SampleResult.java`, tag `rel/v5.6.3`). Each truncation is off by less than 1 ms, so
+each elapsed time is less than 1 ms away from the duration the clock measured. So is each p95, an
+order statistic moving less than the values it is taken from, and a difference of two p95 values
+is less than 2 ms away from the true one. Truncation alone can therefore produce a one-millisecond
+step, never a two-millisecond one: **2 ms is the smallest floor the clock cannot reach on its
+own.** A 2 ms step shows that the p95 rose, not by how much. One value is declared and no other
+is tried, so no floor is selected on this campaign's data.
+
+Prior use of the same form: the Chromium performance dashboard rejects a change point when either
+the absolute or the relative change of the median is under its threshold
+([`find_change_points.py`](https://chromium.googlesource.com/catapult.git/+/refs/heads/main/dashboard/dashboard/find_change_points.py)).
+
+### Protocol and detectors
+
+As in the first campaign (A-B-B-A, CI profile, 60 s hold, `ubuntu-24.04` runners), in **one**
+run of the `Calibration` workflow, on the commit that merges this section: **120 A/A runs and 10
+per regression**, 150 jobs. With 120 A/A runs, "≤ 5%" can be claimed with at most one flagged
+run (upper bound 3.9%); N+1 detected in 10 runs out of 10 gives a one-sided 95% lower bound of
+74%.
+
+Reported by `src/loadlens/calibration.py`, on the same runs:
+
+- **windowed** (ADR-004, unchanged): a new measure of the detector in use, on data that did not
+  choose it;
+- **windowed + floor**;
+- **windowed + floor, at least 2 of its 3 conditions**: the verdict's WARN rule with the floor.
+
+### Decision criteria, declared before the second campaign
+
+1. The floor is adopted only if windowed + floor flags `get_statement` in **every** N+1 run.
+2. Its false-positive rate is reported with the exact one-sided 95% upper bound; "≤ 5%" is claimed
+   only if that bound is under 5%. The target of 2026-10-16 (false-positive rate ≤ 5% and N+1
+   detected) is met only if criteria 1 and 2 both hold.
+3. LOCK and POOL detections are reported with an exact one-sided 95% lower bound. They are not a
+   condition: a one-millisecond detection was no evidence. Every transaction the floor removes,
+   in any run, is listed with its p95 change.
+4. In the verdict, the floor joins the effect condition: a significant one-millisecond step meets
+   two conditions out of three and ends WARN. On A/A runs, the rate of this WARN (runs flagged
+   with at least 2 of the 3 conditions, not with all 3) is measured and reported, not tuned. SLOs
+   are not part of it.
+5. **Stability instrument:** the self-check with windowed + floor (A1 against A2, both ways). It
+   becomes a reason for INCONCLUSIVE only if it makes no N+1 run inconsistent and at most 1 A/A
+   run in 10 (12 of 120): the criterion of the first campaign, unchanged.
+6. Runs are excluded as in the first campaign, and also when their `cpu_count` is not 4
+   (`--expected-cpus 4`).
+7. One execution: no job is re-run. If more than 10% of the runs are excluded, the campaign is
+   void and the decision goes back to the maintainer.
+8. The campaign is not pooled with run 39058130424 or 39241955097.
+
+The floor holds for JMeter results, timed to the millisecond. The timer resolution of LoadRunner
+DevWeb results is unknown; it is checked when their adapter is written.

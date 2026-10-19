@@ -66,6 +66,15 @@ Bugs caught by the test suite are logged with their cause and fix in
 - `load/abba.sh`: `SUT_IMAGE_BASELINE` and `SUT_IMAGE_CANDIDATE` run a different image of the
   system under test in each arm; `meta.json` records the image each API container ran.
 - Dependency: PyYAML 6.0.3.
+- Second calibration campaign declared before it runs (`docs/calibration.md`): the windowed
+  detector with an absolute floor of 2 ms on the p95 change, the smallest change JMeter's
+  millisecond clock cannot produce on its own; 120 A/A runs and 10 per regression; decision
+  criteria for the floor and for a stability self-check. The production detector is unchanged
+  until the campaign decides.
+- `python -m loadlens.calibration`: the floored detector and its WARN rule, the list of
+  transactions the floor removes with their p95 change, exact lower bounds of detection rates,
+  `--expected-cpus` to exclude runs from another runner size. The `Calibration` workflow accepts up
+  to 200 A/A runs and excludes runs without 4 CPUs.
 
 ### Fixed
 
