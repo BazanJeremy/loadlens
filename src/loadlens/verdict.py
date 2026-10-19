@@ -8,7 +8,9 @@ green.
 
 Without a baseline the verdict rests on SLOs alone and says so in a note. INCONCLUSIVE means a
 comparison was asked for and could not be made: no baseline run, a run without raw samples, a
-transaction missing from one arm, or too few windows.
+transaction missing from one arm, or too few windows. It also means that nothing was measured:
+a candidate segment without any sample, or an A-B-B-A run that cannot be used. Only that last
+kind fails a CI job (`ci_passes`): the check did not take place at all.
 """
 
 from collections.abc import Mapping, Sequence
@@ -23,6 +25,7 @@ from loadlens.kpi import Kpis, compute
 from loadlens.schema import Run
 
 OVERALL = "all transactions"
+NO_MEASUREMENT = "no_measurement"
 
 
 class Level(StrEnum):
@@ -80,7 +83,8 @@ def load_config(path: str | Path) -> VerdictConfig:
 
 class Reason(_Strict):
     level: Level
-    check: str  # hard_slo, soft_slo, regression, weak_regression, comparison, sample_size
+    # hard_slo, soft_slo, regression, weak_regression, comparison, sample_size, no_measurement
+    check: str
     transaction: str | None  # None: the run as a whole
     segment: str | None  # candidate segment an SLO was broken in
     detail: str
@@ -95,6 +99,16 @@ class Verdict(_Strict):
     @property
     def exit_code(self) -> int:
         return EXIT_CODES[self.level]
+
+    @property
+    def measured(self) -> bool:
+        return not any(r.check == NO_MEASUREMENT for r in self.reasons)
+
+    @property
+    def ci_passes(self) -> bool:
+        """Whether a CI job should pass: WARN and INCONCLUSIVE stay green with an annotation,
+        except an INCONCLUSIVE where nothing was measured."""
+        return self.level is not Level.FAIL and self.measured
 
 
 def _check_slos(
@@ -218,7 +232,7 @@ def evaluate(
             reasons.append(
                 Reason(
                     level=Level.INCONCLUSIVE,
-                    check="sample_size",
+                    check=NO_MEASUREMENT,
                     transaction=None,
                     segment=segment,
                     detail="no sample in this segment",
@@ -281,8 +295,13 @@ def evaluate(
 
 
 def inconclusive(detail: str) -> Verdict:
-    """Verdict of a comparison that could not even be loaded (e.g. an unusable A-B-B-A run)."""
+    """Verdict of a run that could not even be loaded, e.g. an unusable A-B-B-A run: nothing was
+    measured."""
     reason = Reason(
-        level=Level.INCONCLUSIVE, check="comparison", transaction=None, segment=None, detail=detail
+        level=Level.INCONCLUSIVE,
+        check=NO_MEASUREMENT,
+        transaction=None,
+        segment=None,
+        detail=detail,
     )
     return Verdict(level=Level.INCONCLUSIVE, reasons=[reason], notes=[], comparisons=[])

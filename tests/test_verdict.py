@@ -156,7 +156,22 @@ def test_every_candidate_segment_is_checked(config):
 def test_a_segment_without_samples_is_inconclusive_not_pass(config):
     empty = run_of([])
     verdict = evaluate([empty], config)
-    assert levels(verdict) == [(Level.INCONCLUSIVE, "sample_size")]
+    assert levels(verdict) == [(Level.INCONCLUSIVE, "no_measurement")]
+    assert not verdict.measured
+    assert not verdict.ci_passes  # nothing was measured: the CI job must not pass
+
+
+@pytest.mark.parametrize(
+    ("make", "passes"),
+    [
+        (lambda c: evaluate([run_of(latencies(10, 1))], c), True),  # PASS
+        (lambda c: evaluate([run_of([10] * 90 + [400] * 10)], c), True),  # WARN
+        (lambda c: evaluate([run_of(latencies(10, 1))], c, baseline=[]), True),  # INCONCLUSIVE
+        (lambda c: evaluate([run_of([10] * 98 + [900, 900])], c), False),  # FAIL
+    ],
+)
+def test_ci_passes_unless_fail_or_nothing_measured(config, make, passes):
+    assert make(config).ci_passes is passes
 
 
 def test_aggregates_without_percentiles_leave_notes_not_breaches(config):
@@ -205,6 +220,7 @@ def test_too_few_windows_is_inconclusive(config):
     short = run_of(latencies(10, 1, n=200))  # 20 s: 4 windows per arm, 10 needed
     verdict = evaluate([short], config, baseline=[short])
     assert levels(verdict) == [(Level.INCONCLUSIVE, "sample_size")]
+    assert verdict.ci_passes  # measured, but too little to conclude: green with a warning
 
 
 def test_a_transaction_missing_from_the_baseline_is_inconclusive(config):
@@ -331,6 +347,30 @@ def test_cli_unusable_abba_run_is_inconclusive(capsys, tmp_path, jmeter_fixture)
     code = main(["verdict", "--config", str(SHIPPED), "--abba", str(directory)])
     assert code == EXIT_CODES[Level.INCONCLUSIVE]
     assert "no meta.json" in capsys.readouterr().out
+
+
+def test_ci_status_fails_an_unusable_run_with_an_error(capsys, tmp_path, jmeter_fixture):
+    directory = abba_dir(tmp_path, jmeter_fixture, meta=False)
+    args = ["verdict", "--config", str(SHIPPED), "--abba", str(directory)]
+    assert main([*args, "--annotations", "--ci-status"]) == 1
+    assert (
+        capsys.readouterr()
+        .out.splitlines()[-1]
+        .startswith("::error title=loadlens verdict INCONCLUSIVE::run: A-B-B-A run unusable")
+    )
+
+
+def test_ci_status_keeps_a_measured_inconclusive_green(capsys, tmp_path, jmeter_fixture):
+    directory = abba_dir(tmp_path, jmeter_fixture)  # 8 windows per arm: too few, but measured
+    args = ["verdict", "--config", str(SHIPPED), "--abba", str(directory)]
+    assert main([*args, "--annotations", "--ci-status"]) == 0
+    assert "::warning title=loadlens verdict INCONCLUSIVE::" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(("fixture", "status"), [("all-errors", 1), ("single-transaction", 0)])
+def test_ci_status_of_single_runs(jmeter_fixture, fixture, status):
+    path = str(jmeter_fixture(f"2026-10-17-{fixture}.jtl"))
+    assert main(["verdict", "--config", str(SHIPPED), "--candidate", path, "--ci-status"]) == status
 
 
 def test_cli_files_without_baseline(capsys, jmeter_fixture):

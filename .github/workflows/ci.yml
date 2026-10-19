@@ -124,16 +124,15 @@ jobs:
             --cpu-count "$(nproc)" \
             | tee results/kpis.json
           jq -e '.kpis.overall.count > 0' results/kpis.json > /dev/null
-      - name: SLO verdict (WARN and INCONCLUSIVE stay green, with an annotation)
+      # WARN and INCONCLUSIVE stay green with an annotation, unless nothing was measured.
+      - name: SLO verdict
         run: |
-          code=0
           loadlens verdict --config config/slo.yaml --candidate results/jmeter.jtl \
             --warmup-s "$RAMP_S" \
             --target-rps create_payment="$RATE_CREATE_PAYMENT" \
             --target-rps get_payment="$RATE_GET_PAYMENT" \
             --target-rps get_statement="$RATE_GET_STATEMENT" \
-            --json results/verdict.json --annotations || code=$?
-          case "$code" in 0 | 1 | 3) ;; *) exit "$code" ;; esac
+            --json results/verdict.json --annotations --ci-status
       - name: Logs on failure
         if: failure()
         run: docker compose logs
@@ -205,12 +204,11 @@ jobs:
               raise SystemExit(f"segments ran the wrong image: {wrong}")
           print("ok:", ran)
           PY
-      - name: Verdict (WARN and INCONCLUSIVE stay green, with an annotation)
+      # WARN and INCONCLUSIVE stay green with an annotation, unless nothing was measured.
+      - name: Verdict
         run: |
-          code=0
           loadlens verdict --config config/slo.yaml --abba results/gate \
-            --json results/gate/verdict.json --annotations || code=$?
-          case "$code" in 0 | 1 | 3) ;; *) exit "$code" ;; esac
+            --json results/gate/verdict.json --annotations --ci-status
       - name: Logs on failure
         if: failure()
         run: docker compose logs
