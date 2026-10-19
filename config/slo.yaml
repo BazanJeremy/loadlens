@@ -17,14 +17,15 @@ soft:
   apdex: 0.90 # Apdex (T = apdex_t_ms) must reach at least
   throughput_tolerance: 0.05 # achieved rate must reach at least target x (1 - tolerance)
 
-# Windowed regression detector, used only when a baseline is given (ADR-004).
-# Calibrated values: changing any of the first five leaves the measured false-positive rate
-# (1 A/A run out of 60, upper bound 7.7%) without a source.
+# Windowed regression detector, used only when a baseline is given (ADR-004, its effect condition
+# amended by ADR-006). Calibrated values: changing any of the first six leaves the measured
+# false-positive rate (2 A/A runs out of 120, upper bound 5.15%, run 39261296881) without a source.
 regression:
   window_s: 5 # p95 computed per window of this many seconds
   min_window_samples: 5 # windows with fewer successful samples are left out
   alpha: 0.05 # one-sided Mann-Whitney U on window p95 values: p must be below
   min_delta_p95_rel: 0.10 # relative change of the p95 of all samples: must be above
+  min_delta_p95_ms: 2 # and the same change in milliseconds: must be at least
   min_cliffs_delta: 0.147 # Cliff's delta on window p95 values: must be at least
   # Declared on 2026-10-18, not calibrated: fewer windows than this in either arm, for a
   # transaction, ends the verdict INCONCLUSIVE. Every comparison of the calibration campaign
