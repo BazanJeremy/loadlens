@@ -10,6 +10,12 @@
 #
 # Settings (environment): RAMP_S (10), HOLD_S (60), RATE_CREATE_PAYMENT (4), RATE_GET_PAYMENT
 # (10), RATE_GET_STATEMENT (6), JMETER_IMAGE (loadlens-jmeter:5.6.3).
+#
+# SUT_IMAGE_BASELINE and SUT_IMAGE_CANDIDATE (both or neither): local images of the system under
+# test that the A and the B segments run, seed and API alike, e.g. a pull request's base commit
+# against its head. Each is tagged as the compose images (loadlens-sut-seed, loadlens-sut-api)
+# before its segment, which then starts with --no-build. Without them, every segment runs the
+# images compose already built. Either way meta.json records the image each API container ran.
 set -euo pipefail
 
 candidate="${1:?candidate: none, N_PLUS_ONE, LOCK or POOL}"
@@ -26,6 +32,12 @@ rate_create="${RATE_CREATE_PAYMENT:-4}"
 rate_get="${RATE_GET_PAYMENT:-10}"
 rate_statement="${RATE_GET_STATEMENT:-6}"
 image="${JMETER_IMAGE:-loadlens-jmeter:5.6.3}"
+sut_baseline="${SUT_IMAGE_BASELINE:-}"
+sut_candidate="${SUT_IMAGE_CANDIDATE:-}"
+if { [ -n "$sut_baseline" ] && [ -z "$sut_candidate" ]; } ||
+    { [ -z "$sut_baseline" ] && [ -n "$sut_candidate" ]; }; then
+    echo "set both SUT_IMAGE_BASELINE and SUT_IMAGE_CANDIDATE, or neither" >&2; exit 2
+fi
 
 mkdir -p "$out"
 out="$(cd "$out" && pwd)"
@@ -37,12 +49,23 @@ hostpath() {
 }
 
 segment() {
-    local name="$1" regression="$2"
+    local name="$1" regression="$2" sut_image="$3" build_flag=""
     export SUT_REGRESSION_N_PLUS_ONE=0 SUT_REGRESSION_LOCK=0 SUT_REGRESSION_POOL=0
     if [ "$regression" != none ]; then
         export "SUT_REGRESSION_${regression}=1"
     fi
-    docker compose --progress quiet -f "$root/compose.yaml" up -d --wait --force-recreate seed api
+    if [ -n "$sut_image" ]; then
+        docker tag "$sut_image" loadlens-sut-seed
+        docker tag "$sut_image" loadlens-sut-api
+        build_flag="--no-build"
+    fi
+    # shellcheck disable=SC2086 # $build_flag is empty or a single flag
+    docker compose --progress quiet -f "$root/compose.yaml" up -d --wait --force-recreate \
+        $build_flag seed api
+    local api_image
+    api_image="$(docker inspect --format '{{.Image}}' \
+        "$(docker compose -f "$root/compose.yaml" ps -q api)")"
+    api_images="${api_images:+$api_images, }\"$name\": \"$api_image\""
     echo "segment $name ($regression) started $(date -u +%FT%TZ)"
     local t0 t1
     t0="$(date +%s)"
@@ -61,10 +84,11 @@ segment() {
 
 started="$(date -u +%FT%TZ)"
 wall_s=""
-segment A1 none
-segment B1 "$candidate"
-segment B2 "$candidate"
-segment A2 none
+api_images=""
+segment A1 none "$sut_baseline"
+segment B1 "$candidate" "$sut_candidate"
+segment B2 "$candidate" "$sut_candidate"
+segment A2 none "$sut_baseline"
 
 cat >"$out/meta.json" <<EOF
 {
@@ -76,6 +100,8 @@ cat >"$out/meta.json" <<EOF
   "hold_s": $hold_s,
   "rates": {"create_payment": $rate_create, "get_payment": $rate_get, "get_statement": $rate_statement},
   "segment_wall_s": {$wall_s},
+  "sut_images": {"baseline": "${sut_baseline:-compose}", "candidate": "${sut_candidate:-compose}"},
+  "segment_api_image": {$api_images},
   "jmeter_image": "$image",
   "started_at": "$started",
   "finished_at": "$(date -u +%FT%TZ)",

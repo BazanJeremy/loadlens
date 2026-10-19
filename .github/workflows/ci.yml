@@ -66,8 +66,8 @@ jobs:
         run: docker compose down -v
 
   jmeter:
-    # Short load test against the SUT. Proves the CI produces a JTL that loadlens can read;
-    # the baseline/candidate verdict comes later.
+    # Short load test against the SUT, one run: checked against the SLOs alone, since a single
+    # run has no baseline (the comparison is the gate job's, on pull requests).
     name: jmeter (short profile)
     runs-on: ubuntu-24.04
     needs: lint-and-test
@@ -124,6 +124,16 @@ jobs:
             --cpu-count "$(nproc)" \
             | tee results/kpis.json
           jq -e '.kpis.overall.count > 0' results/kpis.json > /dev/null
+      - name: SLO verdict (WARN and INCONCLUSIVE stay green, with an annotation)
+        run: |
+          code=0
+          loadlens verdict --config config/slo.yaml --candidate results/jmeter.jtl \
+            --warmup-s "$RAMP_S" \
+            --target-rps create_payment="$RATE_CREATE_PAYMENT" \
+            --target-rps get_payment="$RATE_GET_PAYMENT" \
+            --target-rps get_statement="$RATE_GET_STATEMENT" \
+            --json results/verdict.json --annotations || code=$?
+          case "$code" in 0 | 1 | 3) ;; *) exit "$code" ;; esac
       - name: Logs on failure
         if: failure()
         run: docker compose logs
@@ -132,6 +142,144 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jmeter-results
+          path: results/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Stop the system under test
+        if: always()
+        run: docker compose down -v
+
+  gate:
+    # Pull requests only. The system under test of the base commit (A) against the pull
+    # request's (B), A-B-B-A on one runner (ADR-003); the verdict sets the job status.
+    name: verdict gate (base vs pull request)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    needs: lint-and-test
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check out the base commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.16"
+      - name: Install loadlens
+        run: python -m pip install -e .
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the JMeter image (layers cached between runs)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: load/jmeter
+          tags: loadlens-jmeter:5.6.3
+          load: true
+          cache-from: type=gha,scope=jmeter
+          cache-to: type=gha,scope=jmeter,mode=max
+      - name: Build both systems under test
+        run: |
+          docker build --quiet -t loadlens-sut:baseline base/sut
+          docker build --quiet -t loadlens-sut:candidate sut
+      - name: A-B-B-A run
+        env:
+          SUT_IMAGE_BASELINE: loadlens-sut:baseline
+          SUT_IMAGE_CANDIDATE: loadlens-sut:candidate
+        run: bash load/abba.sh none results/gate
+      - name: Check that each segment ran its arm's image
+        run: |
+          python - <<'PY'
+          import json, subprocess
+          def image_id(tag):
+              return subprocess.run(["docker", "image", "inspect", "--format", "{{.Id}}", tag],
+                                    check=True, capture_output=True, text=True).stdout.strip()
+          ran = json.load(open("results/gate/meta.json"))["segment_api_image"]
+          want = {"A1": "baseline", "A2": "baseline", "B1": "candidate", "B2": "candidate"}
+          wrong = {s: ran.get(s) for s, arm in want.items()
+                   if ran.get(s) != image_id(f"loadlens-sut:{arm}")}
+          if wrong:
+              raise SystemExit(f"segments ran the wrong image: {wrong}")
+          print("ok:", ran)
+          PY
+      - name: Verdict (WARN and INCONCLUSIVE stay green, with an annotation)
+        run: |
+          code=0
+          loadlens verdict --config config/slo.yaml --abba results/gate \
+            --json results/gate/verdict.json --annotations || code=$?
+          case "$code" in 0 | 1 | 3) ;; *) exit "$code" ;; esac
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Keep the run
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verdict-gate
+          path: results/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Stop the system under test
+        if: always()
+        run: docker compose down -v
+
+  proof:
+    # Pull requests only. The central proof: with the N+1 regression switched on, the verdict
+    # must be FAIL, through the regression detector on get_statement and not through an SLO.
+    name: proof (N+1 must FAIL)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    needs: lint-and-test
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.16"
+      - name: Install loadlens
+        run: python -m pip install -e .
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the JMeter image (layers cached between runs)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: load/jmeter
+          tags: loadlens-jmeter:5.6.3
+          load: true
+          cache-from: type=gha,scope=jmeter
+          cache-to: type=gha,scope=jmeter,mode=max
+      - name: Build the system under test
+        run: docker compose build
+      - name: A-B-B-A run, N+1 switched on in B
+        run: bash load/abba.sh N_PLUS_ONE results/proof
+      - name: The verdict must be FAIL, with a regression on get_statement
+        run: |
+          code=0
+          loadlens verdict --config config/slo.yaml --abba results/proof \
+            --json results/proof/verdict.json || code=$?
+          python - "$code" <<'PY'
+          import json, sys
+          verdict = json.load(open("results/proof/verdict.json"))
+          found = [r for r in verdict["reasons"]
+                   if r["check"] == "regression" and r["transaction"] == "get_statement"]
+          if sys.argv[1] != "2" or not found:
+              print(f"::error title=N+1 proof::expected FAIL with a regression on get_statement, "
+                    f"got {verdict['level']} (exit code {sys.argv[1]})")
+              raise SystemExit(1)
+          print("ok:", found[0]["detail"])
+          PY
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Keep the run
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verdict-proof
           path: results/
           retention-days: 14
           if-no-files-found: warn

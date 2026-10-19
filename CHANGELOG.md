@@ -50,6 +50,22 @@ Bugs caught by the test suite are logged with their cause and fix in
   windowed detector retained, false positives 1/60 (95% upper bound 7.7%), N+1 detected in 5 runs
   out of 5, no stability gate. ADR-003 (A-B-B-A protocol on one machine) and ADR-004 (windowed
   regression detector), proposed.
+- Verdict (`loadlens verdict`, `loadlens.verdict`): PASS / WARN / FAIL / INCONCLUSIVE with
+  every reason, exit codes 0 to 3. Hard SLOs (p99, error rate) and soft SLOs (p95, Apdex,
+  throughput against the declared rate) in every candidate segment; the windowed detector of
+  ADR-004 when a baseline is given, two of its three conditions giving WARN; SLOs alone without
+  a baseline. Rules and measured behaviour in `docs/verdict.md`.
+- `config/slo.yaml`: the one place thresholds are written; a test checks that its regression
+  values are the calibrated ones.
+- CI: `gate` job on pull requests (system under test of the base commit against the pull
+  request's, A-B-B-A, verdict sets the job status), `proof` job (N+1 switched on must end FAIL
+  through a regression on `get_statement`), SLO verdict of the single run in the `jmeter` job.
+  WARN and INCONCLUSIVE stay green with a warning annotation (`--annotations`).
+- Manual `Evidence` workflow: A/A, N+1, LOCK and POOL runs through the verdict, outcomes listed
+  in the job summary.
+- `load/abba.sh`: `SUT_IMAGE_BASELINE` and `SUT_IMAGE_CANDIDATE` run a different image of the
+  system under test in each arm; `meta.json` records the image each API container ran.
+- Dependency: PyYAML 6.0.3.
 
 ### Fixed
 
