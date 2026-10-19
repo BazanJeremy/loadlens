@@ -4,7 +4,7 @@
 statistics, not by a single threshold.**
 
 [![CI](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml/badge.svg)](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-198%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-206%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.13%2B-blue?logo=python)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 

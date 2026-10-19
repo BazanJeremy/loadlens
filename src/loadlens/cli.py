@@ -5,7 +5,8 @@
                                           PASS / WARN / FAIL / INCONCLUSIVE, with the reasons
 
 Exit codes: 0 success or PASS, 1 WARN, 2 FAIL, 3 INCONCLUSIVE, 4 unusable input (missing or
-malformed file, invalid argument).
+malformed file, invalid argument). With `verdict --ci-status`, the exit code is a CI job status
+instead: 0 pass, 1 fail, 4 unusable input.
 """
 
 import argparse
@@ -113,8 +114,14 @@ def build_parser() -> argparse.ArgumentParser:
     verdict.add_argument(
         "--annotations",
         action="store_true",
-        help="also print a GitHub Actions annotation (error for FAIL, warning for WARN and "
-        "INCONCLUSIVE)",
+        help="also print a GitHub Actions annotation: an error when the CI job should fail, "
+        "a warning for any other verdict but PASS",
+    )
+    verdict.add_argument(
+        "--ci-status",
+        action="store_true",
+        help="exit with a CI job status instead of the verdict code: 1 for FAIL, or for an "
+        "INCONCLUSIVE where nothing was measured; 0 otherwise",
     )
     return parser
 
@@ -186,8 +193,9 @@ def _print_verdict(verdict: Verdict) -> None:
 
 
 def github_annotation(verdict: Verdict) -> str | None:
-    """GitHub Actions workflow command for a verdict: an error for FAIL, a warning for WARN and
-    INCONCLUSIVE, none for PASS. Data is escaped as the workflow-command syntax requires."""
+    """GitHub Actions workflow command for a verdict: an error when the job should fail (FAIL,
+    nothing measured), a warning for WARN and any other INCONCLUSIVE, none for PASS. Data is
+    escaped as the workflow-command syntax requires."""
     if verdict.level is Level.PASS:
         return None
     lines = [
@@ -195,7 +203,7 @@ def github_annotation(verdict: Verdict) -> str | None:
         for r in verdict.reasons
     ]
     message = "; ".join(lines).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-    command = "error" if verdict.level is Level.FAIL else "warning"
+    command = "warning" if verdict.ci_passes else "error"
     return f"::{command} title=loadlens verdict {verdict.level}::{message}"
 
 
@@ -218,6 +226,8 @@ def _verdict(args: argparse.Namespace) -> int:
     _print_verdict(verdict)
     if args.annotations and (annotation := github_annotation(verdict)):
         print(annotation)
+    if args.ci_status:
+        return EXIT_OK if verdict.ci_passes else 1
     return verdict.exit_code
 
 

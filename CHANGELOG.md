@@ -66,6 +66,15 @@ Bugs caught by the test suite are logged with their cause and fix in
 - `load/abba.sh`: `SUT_IMAGE_BASELINE` and `SUT_IMAGE_CANDIDATE` run a different image of the
   system under test in each arm; `meta.json` records the image each API container ran.
 - Dependency: PyYAML 6.0.3.
+- `loadlens verdict --ci-status`: exit with the CI job status instead of the verdict code. An
+  INCONCLUSIVE where nothing was measured (a candidate segment without any sample, an unusable
+  A-B-B-A run; check `no_measurement`) fails the job; any other INCONCLUSIVE and WARN stay green
+  with a warning annotation. Used by the `jmeter` and `gate` jobs.
+- ADR-005 (verdict levels, their order, and when a CI job fails), proposed.
+- `docs/verdict.md`: throughput measured on the CI single run (3.99, 9.99 and 5.99 per second
+  against floors of 3.8, 9.5 and 5.7), no POOL error on the CI runners, the signature of the
+  local POOL errors (cause unknown), and the first `Evidence` run (3 runs per mode: N+1 FAIL
+  3/3, LOCK 2/3, POOL 1/3, one A/A FAIL out of 3 on a one-millisecond step).
 - Second calibration campaign declared before it runs (`docs/calibration.md`): the windowed
   detector with an absolute floor of 2 ms on the p95 change, the smallest change JMeter's
   millisecond clock cannot produce on its own; 120 A/A runs and 10 per regression; decision
