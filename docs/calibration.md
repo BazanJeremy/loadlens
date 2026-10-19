@@ -115,7 +115,9 @@ public). No run was excluded.
 measured (1/60, upper bound 7.7%), and no self-check gate: run stability is not a reason for
 INCONCLUSIVE until an instrument passes a calibration declared beforehand. Rationale and options:
 [ADR-004](adr/ADR-004-windowed-regression-detector.md); protocol:
-[ADR-003](adr/ADR-003-abba-protocol-on-one-machine.md).
+[ADR-003](adr/ADR-003-abba-protocol-on-one-machine.md). Its effect condition and its
+false-positive rate were replaced on 2026-10-19, after the second campaign below
+([ADR-006](adr/ADR-006-absolute-floor-on-the-p95-change.md)).
 
 ### What else the campaign shows
 
@@ -204,3 +206,62 @@ Reported by `src/loadlens/calibration.py`, on the same runs:
 
 The floor holds for JMeter results, timed to the millisecond. The timer resolution of LoadRunner
 DevWeb results is unknown; it is checked when their adapter is written.
+
+### Results (2026-10-19)
+
+Source: `Calibration` workflow, run
+[39261296881](https://github.com/BazanJeremy/loadlens/actions/runs/39261296881) on commit
+`b926399`, the merge of the pull request that holds the criteria above; 152 jobs out of 152
+successful, first attempt; figures from its `calibration-report` artifact (`calibration.json`),
+read on 2026-10-19. 150 runs, all on 4 CPUs, none excluded; every comparison had 24 windows per
+arm. An earlier start the same day (run 39253134923) used the commit before the criteria were
+merged: its plan step refused 120 A/A runs, so no load ran and no data exists.
+
+| Detector | A/A runs flagged | FPR upper bound (95%) | A/A inconsistent | N+1 detected (inconsistent) | LOCK detected (inconsistent) | POOL detected (inconsistent) |
+|---|---|---|---|---|---|---|
+| mission | 4/120 | 7.47% | 35/120 | 10/10 (1) | 6/10 (2) | 0/10 (0) |
+| windowed (ADR-004) | 8/120 | 11.71% | 26/120 | 10/10 (2) | 5/10 (3) | 2/10 (1) |
+| bootstrap strict | 0/120 | 2.47% | 10/120 | 10/10 (2) | 2/10 (2) | 0/10 (1) |
+| bootstrap | 0/120 | 2.47% | 12/120 | 10/10 (2) | 5/10 (3) | 0/10 (1) |
+| **windowed + 2 ms floor** | **2/120** | **5.15%** | **14/120** | **10/10 (2)** | **5/10 (2)** | **1/10 (1)** |
+
+#### The declared criteria, applied as written
+
+1. **The floor is adopted**: windowed + floor flags `get_statement` in all 10 N+1 runs (p95 from
+   6–9 ms to 33–55 ms).
+2. **"≤ 5%" is not claimed**: 2 A/A runs flagged out of 120, upper bound 5.15%. The target of
+   2026-10-16 is still not met.
+3. LOCK detected in 5 runs out of 10 (lower bound 22.2%), none lost to the floor. POOL detected in
+   1 run out of 10 (lower bound 0.5%); the floor removed one detection, `POOL-3` (`get_statement`
+   8 → 9 ms).
+4. WARN on a healthy candidate: 15 A/A runs out of 120 (upper bound 18.6%).
+5. **The self-check gate is not adopted**: with the floored detector it makes 14 A/A runs out of
+   120 inconsistent (limit 12) and 2 N+1 runs (`N_PLUS_ONE-1`, `N_PLUS_ONE-8`; limit 0).
+6. No run excluded, no job re-run, nothing pooled (criteria 6 to 8): the campaign is valid.
+
+**Decision (maintainer, 2026-10-19):** the floor, as declared; run stability stays out of the
+reasons for INCONCLUSIVE. Rationale and options:
+[ADR-006](adr/ADR-006-absolute-floor-on-the-p95-change.md).
+
+#### What else the campaign shows
+
+- **What the floor removes**: 6 of the 8 A/A runs the windowed detector flags, the `POOL-3`
+  detection, and one-millisecond steps on the other transactions of 7 N+1 runs (`get_payment`,
+  and `create_payment` once), which N+1 also slows down (local pilot above).
+- **The two remaining false positives and the five LOCK detections are all steps of exactly
+  2 ms**: `aa-109` (`get_statement` 11 → 13 ms), `aa-41` (`create_payment` 8 → 10 ms), and
+  `create_payment` in `LOCK-1`, `-3`, `-6`, `-9` and `-10`. Their size does not tell them apart;
+  their rate does: 5 LOCK runs out of 10 against 2 A/A runs out of 120 (one-sided Fisher exact
+  test p = 1.7 × 10⁻⁵, a comparison not declared before the campaign). For POOL, 1 out of 10, the
+  same test gives p = 0.22.
+- **The detector chosen by the first campaign flags 8 A/A runs out of 120 on new data**, against
+  1 out of 60 in the campaign that chose it. The two counts are compatible (two-sided Fisher exact
+  test p = 0.28).
+- **The bootstrap detector flags no A/A run** (upper bound 2.47%) and detects N+1 10/10 and LOCK
+  5/10. Its rule has not changed since the first campaign, so this is a new measurement, but this
+  campaign was declared to evaluate the floor, not to choose between detectors: it is not adopted
+  (ADR-006).
+- **In `aa-109`, all three transactions moved together** between the A and B arms, as in `aa-51`
+  of the first campaign, although both arms run the same code. Cause unknown.
+- **A/A stability**, per transaction and segment: raw-latency CV median 0.272, 95th percentile
+  0.403, max 4.748; CV of the 5 s window p95 median 0.175, 95th percentile 0.381, max 2.934.
