@@ -2,7 +2,8 @@
 
 `loadlens verdict` tells whether a candidate is fit to ship, with its reasons: **PASS**,
 **WARN**, **FAIL** or **INCONCLUSIVE**. It checks the candidate against SLOs and, when a baseline
-measured on the same machine is given, looks for a regression with the detector of ADR-004.
+measured on the same machine is given, looks for a regression with the detector of ADR-004, its
+effect condition amended by ADR-006.
 Thresholds live in one file, [`config/slo.yaml`](../config/slo.yaml).
 
 ```bash
@@ -59,15 +60,18 @@ Only when a baseline is given. Per transaction, with the windowed detector of
 [ADR-004](adr/ADR-004-windowed-regression-detector.md):
 
 1. one-sided Mann-Whitney U test, candidate greater, on the p95 of each 5 s window: p < 0.05;
-2. relative change of the p95 of all successful samples of each arm: more than +10%;
+2. change of the p95 of all successful samples of each arm: more than +10% **and** at least
+   2 ms ([ADR-006](adr/ADR-006-absolute-floor-on-the-p95-change.md)): under a p95 of 10 ms,
+   +10% is less than one step of the millisecond clock JMeter times samples with;
 3. Cliff's δ on the same window p95 values: at least 0.147.
 
 All three: **FAIL** (regression). Two of three: **WARN** (weak regression), a rule declared on
 2026-10-16, before the calibration campaign, and kept as declared. Its rate was measured
-afterwards (below), not tuned.
+afterwards (below), not tuned. A significant one-millisecond step meets two conditions: WARN at
+most.
 
-The first five values of `regression:` in `config/slo.yaml` are the calibrated ones; a test
-checks that they match the detector the campaign measured. Changed, they leave the measured
+The first six values of `regression:` in `config/slo.yaml` are the calibrated ones; a test
+checks that they match the detector the campaigns measured. Changed, they leave the measured
 false-positive rate without a source.
 
 ## INCONCLUSIVE
@@ -84,14 +88,33 @@ that cannot be used, for instance a segment that overran its schedule by more th
 ([ADR-003](adr/ADR-003-abba-protocol-on-one-machine.md)). This INCONCLUSIVE also **fails the CI
 job** (check `no_measurement`): the check did not take place at all.
 
-Run stability is not a reason: no instrument has passed a calibration yet (ADR-004). Without a
-baseline, the verdict rests on SLOs alone and a note says that regressions were not checked.
+Run stability is not a reason: no instrument has passed a calibration yet (ADR-004, and again
+ADR-006). Without a baseline, the verdict rests on SLOs alone and a note says that regressions
+were not checked.
 
 ## Measured behaviour
 
-**Regression rules on the calibration campaign** (run 39058130424, 2026-10-17, 4-CPU
-`ubuntu-24.04` runners, 60 s hold). The campaign report holds the per-transaction comparisons,
-not the KPIs, so this applies the regression rules only, without the SLOs:
+**Regression rules on the second calibration campaign** (run 39261296881, 2026-10-19, 120 A/A
+runs and 10 per regression, 4-CPU `ubuntu-24.04` runners, 60 s hold). The campaign report holds
+the per-transaction comparisons, not the KPIs, so this applies the regression rules of
+`src/loadlens/verdict.py` and `config/slo.yaml` only, without the SLOs:
+
+| Runs | PASS | WARN | FAIL |
+|---|---|---|---|
+| A/A (120) | 103 | 15 | 2 |
+| N+1 (10) | 0 | 0 | 10 |
+| LOCK (10) | 1 | 4 | 5 |
+| POOL (10) | 7 | 2 | 1 |
+
+- A healthy candidate ends FAIL in 2 runs out of 120 (exact one-sided 95% upper bound 5.15%) and
+  WARN in 15 (upper bound 18.6%); not PASS in 17 out of 120 (upper bound 20.5%).
+- Without the floor, the same A/A runs give 91 PASS, 21 WARN and 8 FAIL, and the POOL runs 6, 2
+  and 2; N+1 and LOCK do not change.
+- The FAIL counts are those of ADR-006. The single POOL FAIL is a rate not distinguishable from
+  the A/A one: this campaign does not establish that POOL is detected.
+
+**Regression rules on the first calibration campaign, before the floor** (run 39058130424,
+2026-10-17, 4-CPU `ubuntu-24.04` runners, 60 s hold), regression rules only:
 
 | Runs | PASS | WARN | FAIL |
 |---|---|---|---|
@@ -106,8 +129,8 @@ not the KPIs, so this applies the regression rules only, without the SLOs:
 - The 2 POOL FAILs are the same one-millisecond step as the only A/A FAIL (ADR-004): this
   campaign does not establish that POOL is detected.
 
-**Full verdict on the CI runners** (`Evidence` workflow run 39241955097, 2026-10-19, 3 A-B-B-A
-runs per mode, 60 s hold, `ubuntu-24.04` runners), SLOs included:
+**Full verdict on the CI runners, before the floor** (`Evidence` workflow run 39241955097,
+2026-10-19, 3 A-B-B-A runs per mode, 60 s hold, `ubuntu-24.04` runners), SLOs included:
 
 | Runs | PASS | WARN | FAIL |
 |---|---|---|---|
@@ -119,7 +142,8 @@ runs per mode, 60 s hold, `ubuntu-24.04` runners), SLOs included:
 - No SLO was broken in any of the 12 runs.
 - The A/A FAIL (`none-3`) and the POOL FAIL (`POOL-2`) are one-millisecond steps again:
   `get_payment` p95 5 → 6 ms (+20%), `get_statement` p95 7 → 8 ms (+14%). This is the weakness
-  ADR-004 describes, under a p95 of 10 ms.
+  ADR-004 describes, under a p95 of 10 ms; with the floor of ADR-006, such a step can no longer
+  end FAIL.
 - Three runs per mode measure no rate. They are not pooled with the campaign, whose criteria
   were declared before it ran.
 
@@ -130,9 +154,10 @@ B1. The 196 errors of B2 are all `java.net.SocketException` (a transport error, 
 response), all started within 0.34 s, each lasting at most 830 ms. The pilot did not record the
 host wall clock yet, so a suspended host cannot be ruled out. Cause unknown.
 
-**POOL errors on the CI runners:** none in the campaign. The arrival schedules are fixed, so each
-segment receives the same arrivals; in the 5 POOL runs, the candidate segments hold exactly as
-many successful samples as the baseline ones, while A/A runs differ by at most one.
+**POOL errors on the CI runners:** none in either campaign. The arrival schedules are fixed, so
+each segment receives the same arrivals. In the 5 POOL runs of the first campaign, the candidate
+segments hold exactly as many successful samples as the baseline ones (A/A runs: at most one
+apart); in the 10 of the second, as many or one more (A/A runs: at most two apart).
 
 **Throughput on the CI single run** (10 s ramp, 120 s hold, CI runs 39121427078 and 39210874408):
 the same counts in both runs, 477, 1,193 and 716 samples, that is 3.99, 9.99 and 5.99 per second

@@ -4,7 +4,7 @@
 statistics, not by a single threshold.**
 
 [![CI](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml/badge.svg)](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-194%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-206%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.13%2B-blue?logo=python)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -37,7 +37,7 @@ threshold then blocks healthy changes, or lets a real regression through.
 
 ## Status
 
-Delivered: skeleton and CI; system under test (`sut/`) with its three switchable regressions — see [sut/README.en.md](sut/README.en.md); common schema, JMeter JTL reading and KPI computation — see [docs/kpi.md](docs/kpi.md); JMeter load test run in CI — see [load/jmeter/README.en.md](load/jmeter/README.en.md); baseline versus candidate comparison, with its regression detector calibrated on the CI runners (1 false positive out of 60 healthy runs, N+1 regression caught in 5 runs out of 5) — see [docs/calibration.md](docs/calibration.md); PASS / WARN / FAIL / INCONCLUSIVE verdict with its reasons, and a CI check of every pull request (the system under test of the base commit against the pull request's, the verdict sets the job status), with the proof that the N+1 regression ends FAIL — see [docs/verdict.md](docs/verdict.md). Next: reporting (job summary, trend page, verdict as JSON and JUnit).
+Delivered: skeleton and CI; system under test (`sut/`) with its three switchable regressions — see [sut/README.en.md](sut/README.en.md); common schema, JMeter JTL reading and KPI computation — see [docs/kpi.md](docs/kpi.md); JMeter load test run in CI — see [load/jmeter/README.en.md](load/jmeter/README.en.md); baseline versus candidate comparison, with its regression detector calibrated on the CI runners (2 false positives out of 120 healthy runs, N+1 regression caught in 10 runs out of 10) — see [docs/calibration.md](docs/calibration.md); PASS / WARN / FAIL / INCONCLUSIVE verdict with its reasons, and a CI check of every pull request (the system under test of the base commit against the pull request's, the verdict sets the job status), with the proof that the N+1 regression ends FAIL — see [docs/verdict.md](docs/verdict.md). Next: reporting (job summary, trend page, verdict as JSON and JUnit).
 
 ## License
 

@@ -115,7 +115,9 @@ public). No run was excluded.
 measured (1/60, upper bound 7.7%), and no self-check gate: run stability is not a reason for
 INCONCLUSIVE until an instrument passes a calibration declared beforehand. Rationale and options:
 [ADR-004](adr/ADR-004-windowed-regression-detector.md); protocol:
-[ADR-003](adr/ADR-003-abba-protocol-on-one-machine.md).
+[ADR-003](adr/ADR-003-abba-protocol-on-one-machine.md). Its effect condition and its
+false-positive rate were replaced on 2026-10-19, after the second campaign below
+([ADR-006](adr/ADR-006-absolute-floor-on-the-p95-change.md)).
 
 ### What else the campaign shows
 
@@ -134,3 +136,132 @@ INCONCLUSIVE until an instrument passes a calibration declared beforehand. Ratio
   raw Cliff's δ of +0.061.
 - **A/A stability**, per transaction and segment: raw-latency CV median 0.270, 95th percentile
   1.031, max 3.970; CV of the 5 s window p95 median 0.175, max 2.032.
+
+## Second campaign: an absolute floor (criteria declared on 2026-10-19, before it runs)
+
+ADR-004 names the windowed detector's weakness: under a p95 of 10 ms, a +10% change is smaller
+than one millisecond, so the effect condition reduces to "one millisecond more". Every false FAIL
+seen since is such a step: `aa-51` above, and `none-3` in `Evidence` run 39241955097
+(`get_payment` p95 5 → 6 ms). So are the POOL detections (`POOL-3` and `POOL-4` above, `POOL-2` in
+that run). These runs prompted the floor, and any floor of 2 ms or more removes them by
+construction: **they cannot serve as its evidence.** Only this campaign does.
+
+### The floor, and why 2 ms
+
+The effect condition becomes: relative Δp95 above +10% **and** absolute Δp95 of at least 2 ms.
+The other two conditions do not change. With whole-millisecond p95 values, the floor changes
+nothing from a baseline p95 of 10 ms upwards, where more than +10% already means at least 2 ms:
+it only acts where the weakness is.
+
+The value comes from the clock, not from data. JMeter 5.6.3 timestamps the start and the end of a
+sample with `System.nanoTime() / 1000000` plus a fixed offset, and records their difference as the
+elapsed time (`SampleResult.java`, tag `rel/v5.6.3`). Each truncation is off by less than 1 ms, so
+each elapsed time is less than 1 ms away from the duration the clock measured. So is each p95, an
+order statistic moving less than the values it is taken from, and a difference of two p95 values
+is less than 2 ms away from the true one. Truncation alone can therefore produce a one-millisecond
+step, never a two-millisecond one: **2 ms is the smallest floor the clock cannot reach on its
+own.** A 2 ms step shows that the p95 rose, not by how much. One value is declared and no other
+is tried, so no floor is selected on this campaign's data.
+
+Prior use of the same form: the Chromium performance dashboard rejects a change point when either
+the absolute or the relative change of the median is under its threshold
+([`find_change_points.py`](https://chromium.googlesource.com/catapult.git/+/refs/heads/main/dashboard/dashboard/find_change_points.py)).
+
+### Protocol and detectors
+
+As in the first campaign (A-B-B-A, CI profile, 60 s hold, `ubuntu-24.04` runners), in **one**
+run of the `Calibration` workflow, on the commit that merges this section: **120 A/A runs and 10
+per regression**, 150 jobs. With 120 A/A runs, "≤ 5%" can be claimed with at most one flagged
+run (upper bound 3.9%); N+1 detected in 10 runs out of 10 gives a one-sided 95% lower bound of
+74%.
+
+Reported by `src/loadlens/calibration.py`, on the same runs:
+
+- **windowed** (ADR-004, unchanged): a new measure of the detector in use, on data that did not
+  choose it;
+- **windowed + floor**;
+- **windowed + floor, at least 2 of its 3 conditions**: the verdict's WARN rule with the floor.
+
+### Decision criteria, declared before the second campaign
+
+1. The floor is adopted only if windowed + floor flags `get_statement` in **every** N+1 run.
+2. Its false-positive rate is reported with the exact one-sided 95% upper bound; "≤ 5%" is claimed
+   only if that bound is under 5%. The target of 2026-10-16 (false-positive rate ≤ 5% and N+1
+   detected) is met only if criteria 1 and 2 both hold.
+3. LOCK and POOL detections are reported with an exact one-sided 95% lower bound. They are not a
+   condition: a one-millisecond detection was no evidence. Every transaction the floor removes,
+   in any run, is listed with its p95 change.
+4. In the verdict, the floor joins the effect condition: a significant one-millisecond step meets
+   two conditions out of three and ends WARN. On A/A runs, the rate of this WARN (runs flagged
+   with at least 2 of the 3 conditions, not with all 3) is measured and reported, not tuned. SLOs
+   are not part of it.
+5. **Stability instrument:** the self-check with windowed + floor (A1 against A2, both ways). It
+   becomes a reason for INCONCLUSIVE only if it makes no N+1 run inconsistent and at most 1 A/A
+   run in 10 (12 of 120): the criterion of the first campaign, unchanged.
+6. Runs are excluded as in the first campaign, and also when their `cpu_count` is not 4
+   (`--expected-cpus 4`).
+7. One execution: no job is re-run. If more than 10% of the runs are excluded, the campaign is
+   void and the decision goes back to the maintainer.
+8. The campaign is not pooled with run 39058130424 or 39241955097.
+
+The floor holds for JMeter results, timed to the millisecond. The timer resolution of LoadRunner
+DevWeb results is unknown; it is checked when their adapter is written.
+
+### Results (2026-10-19)
+
+Source: `Calibration` workflow, run
+[39261296881](https://github.com/BazanJeremy/loadlens/actions/runs/39261296881) on commit
+`b926399`, the merge of the pull request that holds the criteria above; 152 jobs out of 152
+successful, first attempt; figures from its `calibration-report` artifact (`calibration.json`),
+read on 2026-10-19. 150 runs, all on 4 CPUs, none excluded; every comparison had 24 windows per
+arm. An earlier start the same day (run 39253134923) used the commit before the criteria were
+merged: its plan step refused 120 A/A runs, so no load ran and no data exists.
+
+| Detector | A/A runs flagged | FPR upper bound (95%) | A/A inconsistent | N+1 detected (inconsistent) | LOCK detected (inconsistent) | POOL detected (inconsistent) |
+|---|---|---|---|---|---|---|
+| mission | 4/120 | 7.47% | 35/120 | 10/10 (1) | 6/10 (2) | 0/10 (0) |
+| windowed (ADR-004) | 8/120 | 11.71% | 26/120 | 10/10 (2) | 5/10 (3) | 2/10 (1) |
+| bootstrap strict | 0/120 | 2.47% | 10/120 | 10/10 (2) | 2/10 (2) | 0/10 (1) |
+| bootstrap | 0/120 | 2.47% | 12/120 | 10/10 (2) | 5/10 (3) | 0/10 (1) |
+| **windowed + 2 ms floor** | **2/120** | **5.15%** | **14/120** | **10/10 (2)** | **5/10 (2)** | **1/10 (1)** |
+
+#### The declared criteria, applied as written
+
+1. **The floor is adopted**: windowed + floor flags `get_statement` in all 10 N+1 runs (p95 from
+   6–9 ms to 33–55 ms).
+2. **"≤ 5%" is not claimed**: 2 A/A runs flagged out of 120, upper bound 5.15%. The target of
+   2026-10-16 is still not met.
+3. LOCK detected in 5 runs out of 10 (lower bound 22.2%), none lost to the floor. POOL detected in
+   1 run out of 10 (lower bound 0.5%); the floor removed one detection, `POOL-3` (`get_statement`
+   8 → 9 ms).
+4. WARN on a healthy candidate: 15 A/A runs out of 120 (upper bound 18.6%).
+5. **The self-check gate is not adopted**: with the floored detector it makes 14 A/A runs out of
+   120 inconsistent (limit 12) and 2 N+1 runs (`N_PLUS_ONE-1`, `N_PLUS_ONE-8`; limit 0).
+6. No run excluded, no job re-run, nothing pooled (criteria 6 to 8): the campaign is valid.
+
+**Decision (maintainer, 2026-10-19):** the floor, as declared; run stability stays out of the
+reasons for INCONCLUSIVE. Rationale and options:
+[ADR-006](adr/ADR-006-absolute-floor-on-the-p95-change.md).
+
+#### What else the campaign shows
+
+- **What the floor removes**: 6 of the 8 A/A runs the windowed detector flags, the `POOL-3`
+  detection, and one-millisecond steps on the other transactions of 7 N+1 runs (`get_payment`,
+  and `create_payment` once), which N+1 also slows down (local pilot above).
+- **The two remaining false positives and the five LOCK detections are all steps of exactly
+  2 ms**: `aa-109` (`get_statement` 11 → 13 ms), `aa-41` (`create_payment` 8 → 10 ms), and
+  `create_payment` in `LOCK-1`, `-3`, `-6`, `-9` and `-10`. Their size does not tell them apart;
+  their rate does: 5 LOCK runs out of 10 against 2 A/A runs out of 120 (one-sided Fisher exact
+  test p = 1.7 × 10⁻⁵, a comparison not declared before the campaign). For POOL, 1 out of 10, the
+  same test gives p = 0.22.
+- **The detector chosen by the first campaign flags 8 A/A runs out of 120 on new data**, against
+  1 out of 60 in the campaign that chose it. The two counts are compatible (two-sided Fisher exact
+  test p = 0.28).
+- **The bootstrap detector flags no A/A run** (upper bound 2.47%) and detects N+1 10/10 and LOCK
+  5/10. Its rule has not changed since the first campaign, so this is a new measurement, but this
+  campaign was declared to evaluate the floor, not to choose between detectors: it is not adopted
+  (ADR-006).
+- **In `aa-109`, all three transactions moved together** between the A and B arms, as in `aa-51`
+  of the first campaign, although both arms run the same code. Cause unknown.
+- **A/A stability**, per transaction and segment: raw-latency CV median 0.272, 95th percentile
+  0.403, max 4.748; CV of the 5 s window p95 median 0.175, 95th percentile 0.381, max 2.934.

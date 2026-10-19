@@ -4,14 +4,26 @@ import shutil
 
 import pytest
 
-from loadlens.calibration import DETECTORS, analyze, clopper_pearson_upper, render_markdown
+from loadlens.calibration import (
+    DETECTORS,
+    FLOOR_MS,
+    FLOORED,
+    WINDOWED,
+    analyze,
+    clopper_pearson_lower,
+    clopper_pearson_upper,
+    render_markdown,
+)
+from loadlens.compare import TransactionComparison
 
 NOMINAL = "2026-10-17-nominal-short.jtl"
+FLOORED_2_OF_3 = "windowed + floor: at least 2 of its 3 conditions"
 
 
-def abba_dir(tmp_path, jmeter_fixture, name, candidate, scale_b=1.0):
+def abba_dir(tmp_path, jmeter_fixture, name, candidate, scale_b=1.0, shift_b_ms=0):
     """A-B-B-A directory built from one real JTL. The B segments are a derived copy with every
-    latency multiplied by `scale_b` (synthetic, to give the detectors a known effect)."""
+    latency multiplied by `scale_b`, then raised by `shift_b_ms` (synthetic, to give the detectors
+    a known effect)."""
     directory = tmp_path / name
     directory.mkdir()
     source = jmeter_fixture(NOMINAL)
@@ -21,7 +33,7 @@ def abba_dir(tmp_path, jmeter_fixture, name, candidate, scale_b=1.0):
         rows = list(csv.reader(handle))
     elapsed = rows[0].index("elapsed")
     for row in rows[1:]:
-        row[elapsed] = str(round(int(row[elapsed]) * scale_b))
+        row[elapsed] = str(round(int(row[elapsed]) * scale_b) + shift_b_ms)
     for segment in ("B1", "B2"):
         with (directory / f"{segment}.jtl").open("w", newline="", encoding="utf-8") as handle:
             csv.writer(handle, lineterminator="\n").writerows(rows)
@@ -48,6 +60,62 @@ def test_clopper_pearson_upper_bound_grows_with_events():
     assert clopper_pearson_upper(10, 10) == 1.0
     with pytest.raises(ValueError):
         clopper_pearson_upper(0, 0)
+
+
+@pytest.mark.parametrize("trials", [5, 10])
+def test_clopper_pearson_lower_bound_at_all_events_has_a_closed_form(trials):
+    assert clopper_pearson_lower(trials, trials) == pytest.approx(0.05 ** (1 / trials))
+    assert clopper_pearson_lower(0, trials) == 0.0
+    with pytest.raises(ValueError):
+        clopper_pearson_lower(0, 0)
+
+
+def comparison(p95_baseline_ms, p95_candidate_ms, p_value=0.001, cliffs_delta=0.5):
+    """A comparison whose windowed test and Cliff's delta both pass by default."""
+    rel = (p95_candidate_ms - p95_baseline_ms) / p95_baseline_ms
+    return TransactionComparison(
+        transaction="t",
+        baseline_count=100,
+        candidate_count=100,
+        p95_baseline_ms=p95_baseline_ms,
+        p95_candidate_ms=p95_candidate_ms,
+        delta_p95_rel=rel,
+        raw_p_value=None,
+        raw_cliffs_delta=None,
+        windows_baseline=24,
+        windows_candidate=24,
+        windowed_p_value=p_value,
+        windowed_cliffs_delta=cliffs_delta,
+        bootstrap_delta_p95_low=None,
+        bootstrap_delta_p95_high=None,
+    )
+
+
+@pytest.mark.parametrize(
+    ("p95_a", "p95_b", "windowed", "floored"),
+    [
+        (6, 7, True, False),  # +17%, one millisecond: the step of the known false positives
+        (6, 8, True, True),  # +33%, two milliseconds
+        (10, 12, True, True),  # +20%, two milliseconds
+        (30, 32, False, False),  # two milliseconds but +7%: the relative condition still holds
+    ],
+)
+def test_floor_needs_two_milliseconds_on_top_of_ten_percent(p95_a, p95_b, windowed, floored):
+    assert FLOOR_MS == 2
+    c = comparison(p95_a, p95_b)
+    assert DETECTORS[WINDOWED](c) is windowed
+    assert DETECTORS[FLOORED](c) is floored
+
+
+def test_a_significant_one_millisecond_step_meets_two_of_the_floored_conditions():
+    # In the verdict this is WARN (weak regression), no longer FAIL.
+    assert DETECTORS[FLOORED_2_OF_3](comparison(6, 7)) is True
+    assert DETECTORS[FLOORED_2_OF_3](comparison(6, 7, p_value=0.5)) is False
+
+
+def test_floor_without_a_p95_flags_nothing():
+    c = comparison(6, 8).model_copy(update={"p95_candidate_ms": None})
+    assert DETECTORS[FLOORED](c) is False
 
 
 def test_identical_aa_run_flags_nothing(tmp_path, jmeter_fixture):
@@ -142,3 +210,30 @@ def test_report_lists_every_detector_and_renders(tmp_path, jmeter_fixture):
         "A/A flagged and consistent | LOCK detected (inconsistent) |"
     ) in text
     assert text.isascii()  # printable on a cp1252 Windows console
+
+
+def test_run_with_another_cpu_count_is_excluded_when_one_is_expected(tmp_path, jmeter_fixture):
+    run = abba_dir(tmp_path, jmeter_fixture, "two-cpus", "none")  # meta.json: cpu_count 2
+    assert analyze([run], replicates=20, expected_cpus=2)["excluded"] == []
+    report = analyze([run], replicates=20, expected_cpus=4)
+    assert report["excluded"] == [{"directory": "two-cpus", "reason": "cpu_count 2, expected 4"}]
+    assert "1 of 1 runs." in render_markdown(report)
+
+
+def test_report_lists_the_one_millisecond_steps_the_floor_removes(tmp_path, jmeter_fixture):
+    # Every B latency raised by 1 ms: get_payment, p95 6 ms in this fixture, rises by 17%.
+    run = abba_dir(tmp_path, jmeter_fixture, "step", "none", shift_b_ms=1)
+    report = analyze([run], replicates=50)
+    flags = report["runs"][0]["flags"]
+    assert "get_payment" in flags[WINDOWED]
+    assert flags[FLOORED] == []
+    removed = report["floor_removed"]
+    assert {f["transaction"] for f in removed} == set(flags[WINDOWED])
+    assert all(f["p95_candidate_ms"] - f["p95_baseline_ms"] == 1 for f in removed)
+    assert "| step | none | get_payment | 6 -> 7 |" in render_markdown(report)
+
+    # Raised by 2 ms instead, the floor keeps what the windowed detector flags.
+    run = abba_dir(tmp_path, jmeter_fixture, "two-steps", "none", shift_b_ms=2)
+    report = analyze([run], replicates=50)
+    assert report["floor_removed"] == []
+    assert "get_payment" in report["runs"][0]["flags"][FLOORED]

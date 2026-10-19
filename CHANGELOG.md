@@ -75,6 +75,25 @@ Bugs caught by the test suite are logged with their cause and fix in
   against floors of 3.8, 9.5 and 5.7), no POOL error on the CI runners, the signature of the
   local POOL errors (cause unknown), and the first `Evidence` run (3 runs per mode: N+1 FAIL
   3/3, LOCK 2/3, POOL 1/3, one A/A FAIL out of 3 on a one-millisecond step).
+- Second calibration campaign declared before it runs (`docs/calibration.md`): the windowed
+  detector with an absolute floor of 2 ms on the p95 change, the smallest change JMeter's
+  millisecond clock cannot produce on its own; 120 A/A runs and 10 per regression; decision
+  criteria for the floor and for a stability self-check. Results and decision: see Changed.
+- `python -m loadlens.calibration`: the floored detector and its WARN rule, the list of
+  transactions the floor removes with their p95 change, exact lower bounds of detection rates,
+  `--expected-cpus` to exclude runs from another runner size. The `Calibration` workflow accepts up
+  to 200 A/A runs and excludes runs without 4 CPUs.
+- Second calibration campaign results in `docs/calibration.md` (run 39261296881: 120 A/A runs,
+  10 per regression, none excluded), and ADR-006 (2 ms floor on the p95 change), proposed.
+
+### Changed
+
+- Regression detector: the effect condition also asks for a p95 change of at least 2 ms
+  (`min_delta_p95_ms` in `config/slo.yaml`, ADR-006). Measured on the second campaign: false
+  positives 2/120 (95% upper bound 5.15%, against 8/120 without the floor on the same runs), N+1
+  detected in 10 runs out of 10, LOCK 5/10, POOL 1/10. A significant one-millisecond step now
+  ends WARN instead of FAIL. The stability self-check failed its criterion again: run stability
+  is still not a reason for INCONCLUSIVE.
 
 ### Fixed
 

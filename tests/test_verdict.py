@@ -56,12 +56,13 @@ def levels(verdict):
 
 
 def test_shipped_regression_rule_is_the_calibrated_detector(config):
-    """config/slo.yaml must hold the detector ADR-004 measured, not a retuned one."""
+    """config/slo.yaml must hold the detector ADR-004 and ADR-006 measured, not a retuned one."""
     rule = config.regression
     assert rule.window_s == compare.DEFAULT_WINDOW_S
     assert rule.min_window_samples == compare.DEFAULT_MIN_WINDOW_SAMPLES
     assert rule.alpha == calibration.ALPHA
     assert rule.min_delta_p95_rel == calibration.EFFECT_THRESHOLD
+    assert rule.min_delta_p95_ms == calibration.FLOOR_MS
     assert rule.min_cliffs_delta == calibration.DELTA_THRESHOLD
 
 
@@ -263,6 +264,7 @@ RULE = RegressionRule(
     min_window_samples=5,
     alpha=0.05,
     min_delta_p95_rel=0.10,
+    min_delta_p95_ms=2,
     min_cliffs_delta=0.147,
     min_windows_per_arm=10,
 )
@@ -283,6 +285,19 @@ RULE = RegressionRule(
 def test_regression_conditions(p, rel, delta, expected):
     reason = _check_regression(comparison(p, rel, delta), RULE)
     assert (None if reason is None else (reason.level, reason.check)) == expected
+
+
+@pytest.mark.parametrize(
+    ("p95_candidate_ms", "expected"),
+    [(7, (Level.WARN, "weak_regression")), (8, (Level.FAIL, "regression"))],
+)
+def test_one_millisecond_step_is_at_most_a_weak_regression(p95_candidate_ms, expected):
+    """ADR-006: from 6 ms, +17% is a single clock step; the effect condition asks for 2 ms."""
+    c = comparison(0.01, (p95_candidate_ms - 6) / 6, 0.5).model_copy(
+        update={"p95_baseline_ms": 6, "p95_candidate_ms": p95_candidate_ms}
+    )
+    reason = _check_regression(c, RULE)
+    assert (reason.level, reason.check) == expected
 
 
 # --- precedence ------------------------------------------------------------------------------
