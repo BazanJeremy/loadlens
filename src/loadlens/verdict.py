@@ -56,6 +56,7 @@ class RegressionRule(_Strict):
     min_window_samples: int = Field(ge=1)
     alpha: float = Field(gt=0, lt=1)
     min_delta_p95_rel: float = Field(ge=0)
+    min_delta_p95_ms: float = Field(ge=0)
     min_cliffs_delta: float = Field(ge=0, le=1)
     min_windows_per_arm: int = Field(ge=1)
 
@@ -170,9 +171,18 @@ def _check_regression(c: TransactionComparison, rule: RegressionRule) -> Reason 
             f"at least {rule.min_windows_per_arm} needed in each",
         )
     p, rel, delta = c.windowed_p_value, c.delta_p95_rel, c.windowed_cliffs_delta
+    rise = (
+        c.p95_candidate_ms - c.p95_baseline_ms
+        if c.p95_candidate_ms is not None and c.p95_baseline_ms is not None
+        else None
+    )
     conditions = [
         p is not None and p < rule.alpha,
-        rel is not None and rel > rule.min_delta_p95_rel,
+        # ADR-006: the change must also clear an absolute floor (a JTL clock step is 1 ms).
+        rel is not None
+        and rel > rule.min_delta_p95_rel
+        and rise is not None
+        and rise >= rule.min_delta_p95_ms,
         delta is not None and delta >= rule.min_cliffs_delta,
     ]
     met = sum(conditions)
