@@ -1,0 +1,415 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Kpis": {
+      "properties": {
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        },
+        "error_count": {
+          "title": "Error Count",
+          "type": "integer"
+        },
+        "error_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Error Rate"
+        },
+        "p50_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "P50 Ms"
+        },
+        "p90_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "P90 Ms"
+        },
+        "p95_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "P95 Ms"
+        },
+        "p99_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "P99 Ms"
+        },
+        "mean_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mean Ms"
+        },
+        "throughput_rps": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Throughput Rps"
+        },
+        "apdex": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Apdex"
+        },
+        "cv": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cv"
+        }
+      },
+      "required": [
+        "count",
+        "error_count",
+        "error_rate",
+        "p50_ms",
+        "p90_ms",
+        "p95_ms",
+        "p99_ms",
+        "mean_ms",
+        "throughput_rps",
+        "apdex",
+        "cv"
+      ],
+      "title": "Kpis",
+      "type": "object"
+    },
+    "Level": {
+      "enum": [
+        "PASS",
+        "WARN",
+        "FAIL",
+        "INCONCLUSIVE"
+      ],
+      "title": "Level",
+      "type": "string"
+    },
+    "Reason": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "$ref": "#/$defs/Level"
+        },
+        "check": {
+          "title": "Check",
+          "type": "string"
+        },
+        "transaction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Transaction"
+        },
+        "segment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Segment"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "level",
+        "check",
+        "transaction",
+        "segment",
+        "detail"
+      ],
+      "title": "Reason",
+      "type": "object"
+    },
+    "RunKpis": {
+      "properties": {
+        "overall": {
+          "$ref": "#/$defs/Kpis"
+        },
+        "transactions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Kpis"
+          },
+          "title": "Transactions",
+          "type": "object"
+        },
+        "duration_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Duration S"
+        },
+        "apdex_t_ms": {
+          "title": "Apdex T Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "overall",
+        "transactions",
+        "duration_s",
+        "apdex_t_ms"
+      ],
+      "title": "RunKpis",
+      "type": "object"
+    },
+    "TransactionComparison": {
+      "properties": {
+        "transaction": {
+          "title": "Transaction",
+          "type": "string"
+        },
+        "baseline_count": {
+          "title": "Baseline Count",
+          "type": "integer"
+        },
+        "candidate_count": {
+          "title": "Candidate Count",
+          "type": "integer"
+        },
+        "p95_baseline_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "P95 Baseline Ms"
+        },
+        "p95_candidate_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "P95 Candidate Ms"
+        },
+        "delta_p95_rel": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Delta P95 Rel"
+        },
+        "raw_p_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Raw P Value"
+        },
+        "raw_cliffs_delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Raw Cliffs Delta"
+        },
+        "windows_baseline": {
+          "title": "Windows Baseline",
+          "type": "integer"
+        },
+        "windows_candidate": {
+          "title": "Windows Candidate",
+          "type": "integer"
+        },
+        "windowed_p_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Windowed P Value"
+        },
+        "windowed_cliffs_delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Windowed Cliffs Delta"
+        },
+        "bootstrap_delta_p95_low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Bootstrap Delta P95 Low"
+        },
+        "bootstrap_delta_p95_high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Bootstrap Delta P95 High"
+        }
+      },
+      "required": [
+        "transaction",
+        "baseline_count",
+        "candidate_count",
+        "p95_baseline_ms",
+        "p95_candidate_ms",
+        "delta_p95_rel",
+        "raw_p_value",
+        "raw_cliffs_delta",
+        "windows_baseline",
+        "windows_candidate",
+        "windowed_p_value",
+        "windowed_cliffs_delta",
+        "bootstrap_delta_p95_low",
+        "bootstrap_delta_p95_high"
+      ],
+      "title": "TransactionComparison",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "level": {
+      "$ref": "#/$defs/Level"
+    },
+    "reasons": {
+      "items": {
+        "$ref": "#/$defs/Reason"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "notes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
+    },
+    "segments": {
+      "additionalProperties": {
+        "$ref": "#/$defs/RunKpis"
+      },
+      "title": "Segments",
+      "type": "object"
+    },
+    "comparisons": {
+      "items": {
+        "$ref": "#/$defs/TransactionComparison"
+      },
+      "title": "Comparisons",
+      "type": "array"
+    }
+  },
+  "required": [
+    "level",
+    "reasons",
+    "notes",
+    "segments",
+    "comparisons"
+  ],
+  "title": "Verdict",
+  "type": "object"
+}

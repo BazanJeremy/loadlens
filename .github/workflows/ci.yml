@@ -4,13 +4,15 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch: # a run on main adds a point to the trend page
 
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Pull requests: only the latest push matters. main: every run is a point of the trend page.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint-and-test:
@@ -132,7 +134,8 @@ jobs:
             --target-rps create_payment="$RATE_CREATE_PAYMENT" \
             --target-rps get_payment="$RATE_GET_PAYMENT" \
             --target-rps get_statement="$RATE_GET_STATEMENT" \
-            --json results/verdict.json --annotations --ci-status
+            --json results/verdict.json --junit results/verdict.xml \
+            --summary "$GITHUB_STEP_SUMMARY" --annotations --ci-status
       - name: Logs on failure
         if: failure()
         run: docker compose logs
@@ -208,7 +211,8 @@ jobs:
       - name: Verdict
         run: |
           loadlens verdict --config config/slo.yaml --abba results/gate \
-            --json results/gate/verdict.json --annotations --ci-status
+            --json results/gate/verdict.json --junit results/gate/verdict.xml \
+            --summary "$GITHUB_STEP_SUMMARY" --annotations --ci-status
       - name: Logs on failure
         if: failure()
         run: docker compose logs
@@ -256,9 +260,11 @@ jobs:
         run: bash load/abba.sh N_PLUS_ONE results/proof
       - name: The verdict must be FAIL, with a regression on get_statement
         run: |
+          proof="**N+1 proof:** the verdict below must be FAIL, with a regression on get_statement."
+          printf '%s\n\n' "$proof" >> "$GITHUB_STEP_SUMMARY"
           code=0
           loadlens verdict --config config/slo.yaml --abba results/proof \
-            --json results/proof/verdict.json || code=$?
+            --json results/proof/verdict.json --summary "$GITHUB_STEP_SUMMARY" || code=$?
           python - "$code" <<'PY'
           import json, sys
           verdict = json.load(open("results/proof/verdict.json"))
@@ -284,3 +290,75 @@ jobs:
       - name: Stop the system under test
         if: always()
         run: docker compose down -v
+
+  trend:
+    # main only, pushes and manual runs: adds the jmeter job's verdict to the history kept on the
+    # gh-pages branch, then deploys the trend page (ADR-007). A push made with GITHUB_TOKEN does
+    # not start a Pages build from a branch, hence the deployment through Actions.
+    name: trend page (main)
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      (needs.jmeter.result == 'success' || needs.jmeter.result == 'failure')
+    needs: jmeter
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the history to gh-pages
+      pages: write # deploy the page
+      id-token: write # deploy-pages proves where it runs with an OIDC token
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency: # one history writer at a time; a waiting run is never cancelled for a newer one
+      group: trend-history
+      cancel-in-progress: false
+    steps:
+      # Credentials kept: the history is pushed from this checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.16"
+      - name: Install loadlens
+        run: python -m pip install -e .
+      - name: Fetch this run's verdict
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: jmeter-results
+          path: results
+      - name: Add the run to the history
+        run: |
+          if [ ! -f results/verdict.json ]; then
+            echo "::error title=trend::the jmeter job wrote no verdict"
+            exit 1
+          fi
+          code=0
+          git ls-remote --exit-code --heads origin gh-pages > /dev/null || code=$?
+          if [ "$code" = 0 ]; then
+            git fetch --depth 1 origin gh-pages
+            git worktree add --detach site FETCH_HEAD
+            start=""
+          elif [ "$code" = 2 ]; then # no gh-pages branch yet: this run starts the history
+            git worktree add --orphan -b gh-pages site
+            start="--start"
+          else
+            exit "$code"
+          fi
+          loadlens trend site/history.json $start \
+            --add results/verdict.json --run-id "$GITHUB_RUN_ID" --commit "$GITHUB_SHA" \
+            --added-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --page site/index.html
+      - name: Push the history
+        working-directory: site
+        run: |
+          git add history.json index.html
+          git diff --cached --quiet && exit 0
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet -m "trend: add run $GITHUB_RUN_ID ($GITHUB_SHA)"
+          git push origin HEAD:refs/heads/gh-pages
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
