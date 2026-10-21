@@ -16,16 +16,20 @@ kind fails a CI job (`ci_passes`): the check did not take place at all.
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 from loadlens.compare import TransactionComparison, compare_runs
-from loadlens.kpi import Kpis, compute
+from loadlens.kpi import Kpis, RunKpis, compute
 from loadlens.schema import Run
 
 OVERALL = "all transactions"
 NO_MEASUREMENT = "no_measurement"
+# Version of the verdict JSON (schemas/verdict.schema.json, docs/reporting.md): raised when a
+# field is renamed, removed or changes meaning, not when one is added.
+SCHEMA_VERSION = 1
 
 
 class Level(StrEnum):
@@ -92,9 +96,11 @@ class Reason(_Strict):
 
 
 class Verdict(_Strict):
+    schema_version: Literal[1] = SCHEMA_VERSION
     level: Level
     reasons: list[Reason]
     notes: list[str]  # what was not checked, and why
+    segments: dict[str, RunKpis]  # KPIs of each candidate segment, warm-up left out
     comparisons: list[TransactionComparison]  # empty without a baseline
 
     @property
@@ -232,12 +238,16 @@ def evaluate(
     )
     if len(names) != len(candidate):
         raise ValueError("one segment name per candidate run")
+    if len(set(names)) != len(names):  # a reason names its segment: two alike are ambiguous
+        raise ValueError(f"segment names must differ, got {names}")
     targets = dict(target_rps or {})
     reasons: list[Reason] = []
     notes: list[str] = []
+    segments: dict[str, RunKpis] = {}
 
     for segment, run in zip(names, candidate, strict=True):
         kpis = compute(run, apdex_t_ms=config.apdex_t_ms)
+        segments[segment] = kpis
         if kpis.overall.count == 0:  # nothing measured: no SLO can be said to hold
             reasons.append(
                 Reason(
@@ -301,7 +311,9 @@ def evaluate(
         reasons.extend(r for c in comparisons if (r := _check_regression(c, rule)) is not None)
 
     level = next((lv for lv in SEVERITY if any(r.level is lv for r in reasons)), Level.PASS)
-    return Verdict(level=level, reasons=reasons, notes=notes, comparisons=comparisons)
+    return Verdict(
+        level=level, reasons=reasons, notes=notes, segments=segments, comparisons=comparisons
+    )
 
 
 def inconclusive(detail: str) -> Verdict:
@@ -314,4 +326,6 @@ def inconclusive(detail: str) -> Verdict:
         segment=None,
         detail=detail,
     )
-    return Verdict(level=Level.INCONCLUSIVE, reasons=[reason], notes=[], comparisons=[])
+    return Verdict(
+        level=Level.INCONCLUSIVE, reasons=[reason], notes=[], segments={}, comparisons=[]
+    )

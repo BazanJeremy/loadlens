@@ -3,6 +3,9 @@
     loadlens kpi RESULT_FILE [options]    KPIs of a JMeter result file, as JSON on stdout
     loadlens verdict --config SLO_YAML (--abba RUN_DIR | --candidate JTL ...) [options]
                                           PASS / WARN / FAIL / INCONCLUSIVE, with the reasons
+    loadlens schema                       JSON schema of the verdict, on stdout
+    loadlens trend HISTORY_JSON [--add VERDICT_JSON ...] [--page HTML]
+                                          trend history and its HTML page
 
 Exit codes: 0 success or PASS, 1 WARN, 2 FAIL, 3 INCONCLUSIVE, 4 unusable input (missing or
 malformed file, invalid argument). With `verdict --ci-status`, the exit code is a CI job status
@@ -20,6 +23,17 @@ from pydantic import ValidationError
 from loadlens.adapters.jmeter import JtlFormatError, read_jtl
 from loadlens.calibration import UnusableRun, load_abba
 from loadlens.kpi import DEFAULT_APDEX_T_MS, compute, drop_warmup
+from loadlens.report.json_schema import verdict_json_schema_text
+from loadlens.report.junit import junit_xml
+from loadlens.report.summary import markdown_summary
+from loadlens.report.trend import (
+    History,
+    add_run,
+    history_text,
+    load_history,
+    trend_page,
+    trend_run,
+)
 from loadlens.schema import Machine
 from loadlens.verdict import Level, Verdict, evaluate, inconclusive, load_config
 
@@ -111,6 +125,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="declared arrival rate of a transaction, repeatable",
     )
     verdict.add_argument("--json", metavar="PATH", help="also write the verdict as JSON here")
+    verdict.add_argument("--junit", metavar="PATH", help="also write a JUnit XML report here")
+    verdict.add_argument(
+        "--summary",
+        metavar="PATH",
+        help="also append a Markdown summary to this file, e.g. $GITHUB_STEP_SUMMARY",
+    )
     verdict.add_argument(
         "--annotations",
         action="store_true",
@@ -123,6 +143,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="exit with a CI job status instead of the verdict code: 1 for FAIL, or for an "
         "INCONCLUSIVE where nothing was measured; 0 otherwise",
     )
+
+    schema = commands.add_parser(
+        "schema", help="JSON schema of the verdict that verdict --json writes"
+    )
+    schema.add_argument("output", nargs="?", help="write it to this file instead of stdout")
+
+    trend = commands.add_parser("trend", help="add a verdict to a trend history, write its page")
+    trend.add_argument("history", help="history JSON file, rewritten in place by --add")
+    trend.add_argument(
+        "--start", action="store_true", help="start a new history; the file must not exist yet"
+    )
+    trend.add_argument("--add", metavar="VERDICT_JSON", help="verdict written by verdict --json")
+    trend.add_argument("--run-id", help="identifier of the run; added again, it replaces the entry")
+    trend.add_argument("--commit", help="commit the run measured")
+    trend.add_argument("--added-at", help="ISO 8601 time with a UTC offset, e.g. 2026-10-20T08:00Z")
+    trend.add_argument("--url", help="link to the run")
+    trend.add_argument("--page", metavar="HTML", help="write the trend page here")
     return parser
 
 
@@ -220,6 +257,11 @@ def _verdict(args: argparse.Namespace) -> int:
             Path(args.json).write_text(
                 verdict.model_dump_json(indent=2) + "\n", encoding="utf-8", newline="\n"
             )
+        if args.junit:
+            Path(args.junit).write_text(junit_xml(verdict), encoding="utf-8", newline="\n")
+        if args.summary:
+            with open(args.summary, "a", encoding="utf-8", newline="\n") as handle:
+                handle.write(markdown_summary(verdict) + "\n")
     except (OSError, JtlFormatError, ValidationError, ValueError, KeyError) as exc:
         print(f"loadlens: {exc}", file=sys.stderr)
         return EXIT_INPUT_ERROR
@@ -231,12 +273,60 @@ def _verdict(args: argparse.Namespace) -> int:
     return verdict.exit_code
 
 
+def _trend(args: argparse.Namespace) -> int:
+    run_fields = (args.run_id, args.commit, args.added_at)
+    if args.add and not all(run_fields):
+        print("loadlens: --add needs --run-id, --commit and --added-at", file=sys.stderr)
+        return EXIT_INPUT_ERROR
+    if not args.add and (any(run_fields) or args.url):
+        print("loadlens: --run-id, --commit, --added-at and --url go with --add", file=sys.stderr)
+        return EXIT_INPUT_ERROR
+    if not (args.add or args.page or args.start):
+        print("loadlens: nothing to do: give --add, --page or --start", file=sys.stderr)
+        return EXIT_INPUT_ERROR
+    path = Path(args.history)
+    try:
+        if args.start:
+            if path.exists():  # never overwrite a history: it cannot be rebuilt
+                raise OSError(f"{path} exists; --start only begins a new history")
+            history = History(runs=[])
+        else:
+            history = load_history(path)
+        if args.add:
+            verdict = Verdict.model_validate_json(Path(args.add).read_text(encoding="utf-8"))
+            run = trend_run(
+                verdict,
+                run_id=args.run_id,
+                commit=args.commit,
+                added_at=args.added_at,
+                url=args.url,
+            )
+            history = add_run(history, run)
+        if args.add or args.start:
+            path.write_text(history_text(history), encoding="utf-8", newline="\n")
+        if args.page:
+            Path(args.page).write_text(trend_page(history), encoding="utf-8", newline="\n")
+    except (OSError, ValidationError, ValueError) as exc:
+        print(f"loadlens: {exc}", file=sys.stderr)
+        return EXIT_INPUT_ERROR
+    print(f"loadlens trend: {len(history.runs)} run(s) in {path}")
+    return EXIT_OK
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "kpi":
         return _kpi(args)
     if args.command == "verdict":
         return _verdict(args)
+    if args.command == "schema":  # a file, not a redirection: PowerShell 5.1 writes UTF-16
+        if args.output:
+            Path(args.output).write_text(verdict_json_schema_text(), encoding="utf-8", newline="\n")
+        else:
+            sys.stdout.write(verdict_json_schema_text())
+        return EXIT_OK
+    if args.command == "trend":
+        return _trend(args)
     raise AssertionError(f"unhandled command {args.command}")  # argparse rejects unknown ones
 
 
