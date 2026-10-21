@@ -1,4 +1,5 @@
 import json
+import re
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
 from pathlib import Path
@@ -318,6 +319,32 @@ def test_page_escapes_what_it_shows(verdicts):
 def test_page_without_runs():
     page = trend_page(History(runs=[]))
     assert "0 runs" in page and "No run yet." in page and "<svg" not in page
+
+
+def axis_labels(page, title):
+    """Y-axis labels of the chart titled `title`, bottom to top."""
+    svg = page[page.index(f'aria-label="{title}"') :]
+    return re.findall(r'text-anchor="end">([^<]*)</text>', svg[: svg.index("</svg>")])
+
+
+@pytest.mark.parametrize(
+    ("shapes", "labels"),
+    [
+        (["pass_compared"] * 3, ["0%", "0.5%", "1%"]),  # every error rate 0: the 1% span
+        (["pass_compared", "fail_hard_slo"], ["0%", "50%", "100%"]),  # the data's own span
+    ],
+)
+def test_page_error_rate_axis(verdicts, shapes, labels):
+    """Seen on the live page on 2026-10-21, not by a test: every rate 0 gave a 0-400% axis."""
+    runs = [entry(verdicts[s], str(i), f"2026-10-2{i}T08:00Z") for i, s in enumerate(shapes)]
+    assert axis_labels(trend_page(History(runs=runs)), "Error rate per run") == labels
+
+
+def test_page_p95_axis_when_every_p95_is_zero(config):
+    verdict = evaluate([run_of([0] * 600)], config)  # every sample under 1 ms
+    runs = [entry(verdict, str(i), f"2026-10-2{i}T08:00Z") for i in range(3)]
+    page = trend_page(History(runs=runs))
+    assert axis_labels(page, "p95 latency per run") == ["0 ms", "0.5 ms", "1 ms"]
 
 
 # --- command line ----------------------------------------------------------------------------
