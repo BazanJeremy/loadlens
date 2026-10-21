@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Bugs caught by the test suite are logged with their cause and fix in
+Bugs are logged with what caught them, their cause and fix in
 [docs/bug-evidence.md](docs/bug-evidence.md).
 
 ## [Unreleased]
@@ -124,3 +124,7 @@ Bugs caught by the test suite are logged with their cause and fix in
 - The JMeter container no longer waits 60 s after each test: JMeter 5.6.3's open model keeps idle
   non-daemon threads for a minute; `load/jmeter/entrypoint.sh` returns at `... end of run`
   (132 s instead of 192 s for the CI profile, JTL complete).
+- Trend page: when every error rate was 0, the normal case, the error-rate axis read 0% to 400%.
+  A chart whose values are all 0 now spans 1% (error rate) or 1 ms (p95); a chart with a value
+  above 0 keeps the span of its data. Seen on the live page, not caught by a test
+  ([bug evidence #1](docs/bug-evidence.md)).
