@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>loadlens trend</title>
+<style>
+:root { color-scheme: light dark;
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --grid: #d1d9e0; --line: #8c959f;
+  --pass: #1a7f37; --warn: #9a6700; --fail: #cf222e; --inconclusive: #6e7781; }
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --grid: #30363d; --line: #6e7681;
+  --pass: #3fb950; --warn: #d29922; --fail: #f85149; --inconclusive: #9198a1; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 1.5rem; margin: 0 0 4px; }
+h2 { font-size: 1.1rem; margin: 32px 0 8px; }
+p { margin: 8px 0; }
+.muted { color: var(--muted); }
+svg { display: block; width: 100%; height: auto; }
+svg text { fill: var(--muted); font-size: 13px; }
+.grid { stroke: var(--grid); stroke-width: 1; }
+.trace { fill: none; stroke: var(--line); stroke-width: 1.5; }
+.pass { fill: var(--pass); color: var(--pass); }
+.warn { fill: var(--warn); color: var(--warn); }
+.fail { fill: var(--fail); color: var(--fail); }
+.inconclusive { fill: var(--inconclusive); color: var(--inconclusive); }
+.legend span { margin-right: 16px; white-space: nowrap; }
+.table { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--grid); text-align: right;
+  white-space: nowrap; }
+th:nth-child(-n+4), td:nth-child(-n+4) { text-align: left; }
+.level { font-weight: 600; }
+a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+<h1>loadlens performance trend</h1>
+<p class="muted">1 run in <a href="history.json">history.json</a>, oldest first in the charts. A run with several candidate segments shows its worst one: the highest p95, p99 and error rate.</p>
+<p>Each point is one load test checked against its SLOs. Runs ran on different machines, so their latencies are shown side by side, not compared: a regression is only measured against a baseline run on the same machine.</p>
+<p class="legend"><span class="pass">● PASS</span><span class="warn">● WARN</span><span class="fail">● FAIL</span><span class="inconclusive">● INCONCLUSIVE</span></p>
+<h2>p95 latency</h2>
+<svg viewBox="0 0 720 220" role="img" aria-label="p95 latency per run">
+<line class="grid" x1="64" x2="704" y1="192.0" y2="192.0"/><text x="56" y="196.0" text-anchor="end">0 ms</text>
+<line class="grid" x1="64" x2="704" y1="147.0" y2="147.0"/><text x="56" y="151.0" text-anchor="end">2 ms</text>
+<line class="grid" x1="64" x2="704" y1="102.0" y2="102.0"/><text x="56" y="106.0" text-anchor="end">4 ms</text>
+<line class="grid" x1="64" x2="704" y1="57.0" y2="57.0"/><text x="56" y="61.0" text-anchor="end">6 ms</text>
+<line class="grid" x1="64" x2="704" y1="12.0" y2="12.0"/><text x="56" y="16.0" text-anchor="end">8 ms</text>
+<text x="384.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="384.0" cy="34.5" r="4"><title>2026-10-21 09:12 UTC, 5f4b119: 7 ms, PASS</title></circle>
+</svg>
+<h2>Error rate</h2>
+<svg viewBox="0 0 720 220" role="img" aria-label="Error rate per run">
+<line class="grid" x1="64" x2="704" y1="192.0" y2="192.0"/><text x="56" y="196.0" text-anchor="end">0%</text>
+<line class="grid" x1="64" x2="704" y1="147.0" y2="147.0"/><text x="56" y="151.0" text-anchor="end">100%</text>
+<line class="grid" x1="64" x2="704" y1="102.0" y2="102.0"/><text x="56" y="106.0" text-anchor="end">200%</text>
+<line class="grid" x1="64" x2="704" y1="57.0" y2="57.0"/><text x="56" y="61.0" text-anchor="end">300%</text>
+<line class="grid" x1="64" x2="704" y1="12.0" y2="12.0"/><text x="56" y="16.0" text-anchor="end">400%</text>
+<text x="384.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="384.0" cy="192.0" r="4"><title>2026-10-21 09:12 UTC, 5f4b119: 0%, PASS</title></circle>
+</svg>
+<h2>Runs, newest first</h2>
+<div class="table"><table>
+<thead><tr><th>Added (UTC)</th><th>Run</th><th>Commit</th><th>Verdict</th><th>p95</th><th>p99</th><th>Error rate</th><th>Samples</th></tr></thead><tbody>
+<tr><td>2026-10-21 09:12</td><td><a href="https://github.com/BazanJeremy/loadlens/actions/runs/39574672398">39574672398</a></td><td><code>5f4b119</code></td><td class="level pass">PASS</td><td>7 ms</td><td>10 ms</td><td>0.00%</td><td>2386</td></tr>
+</tbody></table></div>
+</main>
+</body>
+</html>
