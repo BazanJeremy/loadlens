@@ -16,7 +16,8 @@ loadlens verdict --config config/slo.yaml --candidate run.jtl --warmup-s 10 \
 ```
 
 `--baseline JTL` (repeatable) adds a comparison to the second form. `--annotations` also prints
-a GitHub Actions annotation.
+a GitHub Actions annotation. `--json`, `--junit` and `--summary` write the verdict for other
+tools and for people: see [reporting.md](reporting.md).
 
 ## Levels
 
@@ -175,7 +176,10 @@ this SLO checks mainly that the planned load was sent, the role k6 gives to its
   the system under test, and the four segments ran the same image.
 - **Pull requests, `proof` job:** an A-B-B-A run with N+1 switched on in B. The job passes only
   if the verdict is FAIL with a regression on `get_statement`.
-- **Every push and pull request, `jmeter` job:** the single run, SLOs only.
+- **Every push, pull request and manual run, `jmeter` job:** the single run, SLOs only. On
+  `main`, its verdict becomes a point of the trend page ([reporting.md](reporting.md)).
+- Every verdict job writes its summary to the job summary; `jmeter` and `gate` also keep the
+  verdict as JSON and JUnit with their results ([reporting.md](reporting.md)).
 - WARN and INCONCLUSIVE leave the job green, with a warning annotation; FAIL turns it red, and
   so does an INCONCLUSIVE where nothing was measured (`loadlens verdict --ci-status`).
 - **Manual `Evidence` workflow:** runs A/A, N+1, LOCK and POOL through the verdict and lists the

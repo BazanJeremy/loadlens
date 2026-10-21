@@ -85,6 +85,25 @@ Bugs caught by the test suite are logged with their cause and fix in
   to 200 A/A runs and excludes runs without 4 CPUs.
 - Second calibration campaign results in `docs/calibration.md` (run 39261296881: 120 A/A runs,
   10 per regression, none excluded), and ADR-006 (2 ms floor on the p95 change), proposed.
+- Verdict JSON: `schema_version` (1) and `segments`, the KPIs of each candidate segment. Its JSON
+  schema, generated from the model, is committed in `schemas/verdict.schema.json`
+  (`loadlens schema` writes it; a test checks that the committed file is the generated one and
+  that the verdicts written match it).
+- `loadlens verdict --junit PATH`: JUnit XML report, one test case per transaction and segment for
+  the SLOs and per transaction for the comparison. A test case fails when the verdict fails the
+  CI job: FAIL is a `<failure>`, nothing measured an `<error>`, any other INCONCLUSIVE is
+  `<skipped>`, WARN passes with its reason in `<system-out>`.
+- `loadlens verdict --summary PATH`: Markdown summary appended to the file (level, reasons, KPIs
+  of each candidate segment, comparison, what was not checked). The `jmeter`, `gate` and `proof`
+  jobs write it to the job summary; `jmeter` and `gate` also keep the JUnit report.
+- `loadlens trend`: adds a verdict to a JSON history (one entry per run, a run added again
+  replaces its entry) and writes a static HTML page, p95 and error rate per run, without script or
+  external resource.
+- CI job `trend page (main)`, on `main` only: adds the `jmeter` job's verdict to `history.json`
+  on the `gh-pages` branch and deploys the page with GitHub Pages. The CI workflow can be run by
+  hand (`workflow_dispatch`).
+- `docs/reporting.md` (the four outputs) and ADR-007 (verdict schema, JUnit mapping, trend
+  history), proposed.
 
 ### Changed
 
@@ -94,6 +113,11 @@ Bugs caught by the test suite are logged with their cause and fix in
   detected in 10 runs out of 10, LOCK 5/10, POOL 1/10. A significant one-millisecond step now
   ends WARN instead of FAIL. The stability self-check failed its criterion again: run stability
   is still not a reason for INCONCLUSIVE.
+- Two candidate segments with the same name are refused (exit code 4): a reason names its
+  segment, and two alike made it ambiguous. With `--candidate`, the name is the file name.
+- CI: a run on `main` is no longer cancelled by a newer one, since each is a point of the trend
+  page; pull request runs still are.
+- Development dependency: `jsonschema` 4.26.0, to check verdicts against their schema.
 
 ### Fixed
 
