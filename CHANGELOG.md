@@ -104,6 +104,23 @@ Bugs are logged with what caught them, their cause and fix in
   hand (`workflow_dispatch`).
 - `docs/reporting.md` (the four outputs) and ADR-007 (verdict schema, JUnit mapping, trend
   history), proposed.
+- LoadRunner DevWeb adapter (`loadlens.adapters.loadrunner_devweb.read_devweb`): reads the
+  `Transactions` table of a `devWebDB.db`, built from real DevWeb 26.3 files only. A transaction's
+  start is its end timestamp minus its duration; the caller gives the UTC offset, since the file
+  carries none. Rows never observed (non-zero think time, another status) are refused with their
+  row number. Format, evidence and fixtures in `fixtures/loadrunner/PROVENANCE.md`.
+- `loadlens verdict --candidate` takes a `devWebDB.db` as well as a JTL (told apart by the SQLite
+  file header), with `--utc-offset`. A DevWeb result gets an SLO-only verdict: a baseline is
+  refused (exit code 4), the regression detector being calibrated on JMeter results only.
+- DevWeb script of the three journeys (`load/loadrunner/`, closed model, 6 virtual users, 6 per
+  second declared per transaction) and its local run instructions, licence limits (free edition:
+  50 virtual users) and known limitations: no A-B-B-A protocol and no verdict parity on the
+  LoadRunner side in v1.
+- Fixtures (`fixtures/loadrunner/`), each with DevWeb's own summary: the format probe of
+  2026-10-17 (120 transactions, half of them failed: the verdict is FAIL on the error rate) and a
+  run of the script against the system under test on 2026-10-21 (1,161 transactions, all passed:
+  the verdict is PASS, every SLO checked, throughput included). Tests check both files against
+  DevWeb's summary, and that their timestamps mark the end of each transaction.
 
 ### Changed
 
@@ -118,6 +135,8 @@ Bugs are logged with what caught them, their cause and fix in
 - CI: a run on `main` is no longer cancelled by a newer one, since each is a point of the trend
   page; pull request runs still are.
 - Development dependency: `jsonschema` 4.26.0, to check verdicts against their schema.
+- Common schema: a sample's `response_code` may be `None`, when the source records no code per
+  sample (DevWeb transactions).
 
 ### Fixed
 

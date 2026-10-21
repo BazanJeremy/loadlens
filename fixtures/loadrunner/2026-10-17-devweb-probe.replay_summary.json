@@ -1,0 +1,41 @@
+{
+	"startTime": "2026-10-17T14:39:19+02:00",
+	"endTime": "2026-10-17T14:39:50+02:00",
+	"elapsedTime": "00:00:31",
+	"vusers": 2,
+	"statistics": {
+		"New Connections": 60,
+		"Total Hits": 120,
+		"Total BytesSent": 13314,
+		"Total Throughput": 27381
+	},
+	"transactions": [
+		{
+			"name": "get_missing_payment",
+			"minDuration": 5,
+			"avgDuration": 8,
+			"maxDuration": 25,
+			"90%": 11,
+			"pass": 0,
+			"fail": 60
+		},
+		{
+			"name": "get_payment",
+			"minDuration": 6,
+			"avgDuration": 14,
+			"maxDuration": 168,
+			"90%": 13,
+			"pass": 60,
+			"fail": 0
+		}
+	],
+	"Hits per Host": [
+		{
+			"HostName": "127.0.0.1:8000",
+			"Hits": 120,
+			"IpAddress": {
+				"127.0.0.1:8000": 120
+			}
+		}
+	]
+}

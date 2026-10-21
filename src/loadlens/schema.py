@@ -49,7 +49,9 @@ class Samples(BaseModel):
     elapsed_ms: list[int]  # time to last byte
     transaction: list[str]
     success: list[bool]
-    response_code: list[str]  # kept as text: tools write non-numeric codes for transport errors
+    # Kept as text: tools write non-numeric codes for transport errors. None: the source records
+    # no code per sample (LoadRunner DevWeb transactions).
+    response_code: list[str | None]
 
     @model_validator(mode="after")
     def _columns_are_consistent(self) -> Self:

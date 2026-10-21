@@ -15,3 +15,15 @@ def jmeter_fixture():
         return path
 
     return _path
+
+
+@pytest.fixture
+def loadrunner_fixture():
+    """Path of a committed LoadRunner DevWeb result file (see fixtures/loadrunner/PROVENANCE.md)."""
+
+    def _path(name: str) -> Path:
+        path = FIXTURES / "loadrunner" / name
+        assert path.is_file(), f"missing fixture {path}"
+        return path
+
+    return _path

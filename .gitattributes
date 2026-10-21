@@ -1,2 +1,4 @@
 # Normalize line endings: the project is edited on Windows and runs in Linux CI.
 * text=auto eol=lf
+# SQLite result databases (fixtures/loadrunner/) are byte-exact copies of what DevWeb wrote.
+*.db binary

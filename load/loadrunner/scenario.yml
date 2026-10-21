@@ -1,0 +1,13 @@
+# loadlens: closed model. With `intervals` pacing each Vuser starts one iteration (one call of each
+# journey) per second, so the declared rate is 6 per second per transaction, as long as an
+# iteration takes less than a second (DevWeb waits for the previous iteration to finish).
+# DevWeb 26.3 refuses `interval`, the spelling of its help page and example comments.
+# All times are in seconds.
+vusers: 6
+pacing:
+  type: intervals
+  mode: fixed
+  value: 1
+rampUp: 10
+duration: 60
+tearDown: 0

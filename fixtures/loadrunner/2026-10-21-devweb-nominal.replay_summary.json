@@ -1,0 +1,50 @@
+{
+	"startTime": "2026-10-21T14:19:59+02:00",
+	"endTime": "2026-10-21T14:21:10+02:00",
+	"elapsedTime": "00:01:11",
+	"vusers": 6,
+	"statistics": {
+		"New Connections": 387,
+		"Total Hits": 1161,
+		"Total BytesSent": 174346,
+		"Total Throughput": 3612129
+	},
+	"transactions": [
+		{
+			"name": "create_payment",
+			"minDuration": 8,
+			"avgDuration": 12,
+			"maxDuration": 38,
+			"90%": 15,
+			"pass": 387,
+			"fail": 0
+		},
+		{
+			"name": "get_payment",
+			"minDuration": 4,
+			"avgDuration": 6,
+			"maxDuration": 12,
+			"90%": 8,
+			"pass": 387,
+			"fail": 0
+		},
+		{
+			"name": "get_statement",
+			"minDuration": 5,
+			"avgDuration": 9,
+			"maxDuration": 15,
+			"90%": 12,
+			"pass": 387,
+			"fail": 0
+		}
+	],
+	"Hits per Host": [
+		{
+			"HostName": "127.0.0.1:8000",
+			"Hits": 1161,
+			"IpAddress": {
+				"127.0.0.1:8000": 1161
+			}
+		}
+	]
+}
