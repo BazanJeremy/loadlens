@@ -89,6 +89,11 @@ def worst(run: TrendRun, kpi: str) -> float | None:
 LEVEL_CLASS = {lv: lv.value.lower() for lv in Level}
 WIDTH, HEIGHT = 720, 220
 LEFT, RIGHT, TOP, BOTTOM = 64, 16, 12, 28
+# Axis spans when every known value of a chart is 0. Sample times are whole milliseconds, so a
+# p95 above 0 is at least 1 ms. 1% is the smallest round rate that keeps the shipped hard
+# error-rate SLO (0.5%) on the axis; the page cannot read it, a run's SLOs are not in the history.
+ZERO_SPAN_P95_MS = 1.0
+ZERO_SPAN_ERROR_RATE = 0.01
 
 CSS = """
 :root { color-scheme: light dark;
@@ -132,14 +137,20 @@ def _nice_step(span: float) -> float:
 
 
 def _chart(
-    title: str, runs: list[TrendRun], values: list[float | None], fmt: Callable[[float], str]
+    title: str,
+    runs: list[TrendRun],
+    values: list[float | None],
+    fmt: Callable[[float], str],
+    zero_span: float,
 ) -> str:
+    """The axis spans the highest known value, or `zero_span` when every known value is 0."""
     known = [v for v in values if v is not None]
     if not known:
         return f'<p class="muted">{escape(title)}: no known value yet.</p>'
     top = max(known)
-    step = _nice_step(top) if top > 0 else 1.0
-    y_max = step * math.ceil(top / step) if top > 0 else step * 4
+    span = top if top > 0 else zero_span
+    step = _nice_step(span)
+    y_max = step * math.ceil(span / step)
     plot_w, plot_h = WIDTH - LEFT - RIGHT, HEIGHT - TOP - BOTTOM
 
     def x(i: int) -> float:
@@ -217,9 +228,21 @@ def trend_page(history: History) -> str:
     else:
         body += [
             "<h2>p95 latency</h2>",
-            _chart("p95 latency per run", runs, [worst(r, "p95_ms") for r in runs], _ms_axis),
+            _chart(
+                "p95 latency per run",
+                runs,
+                [worst(r, "p95_ms") for r in runs],
+                _ms_axis,
+                ZERO_SPAN_P95_MS,
+            ),
             "<h2>Error rate</h2>",
-            _chart("Error rate per run", runs, [worst(r, "error_rate") for r in runs], _pct_axis),
+            _chart(
+                "Error rate per run",
+                runs,
+                [worst(r, "error_rate") for r in runs],
+                _pct_axis,
+                ZERO_SPAN_ERROR_RATE,
+            ),
             "<h2>Runs, newest first</h2>",
             '<div class="table"><table>',
             "<thead><tr><th>Added (UTC)</th><th>Run</th><th>Commit</th><th>Verdict</th>"
