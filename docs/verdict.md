@@ -13,9 +13,14 @@ loadlens verdict --config config/slo.yaml --abba results/run --json verdict.json
 # Single run, SLOs only
 loadlens verdict --config config/slo.yaml --candidate run.jtl --warmup-s 10 \
   --target-rps create_payment=4 --target-rps get_payment=10 --target-rps get_statement=6
+
+# LoadRunner DevWeb result (devWebDB.db), SLOs only: its timestamps carry no UTC offset
+loadlens verdict --config config/slo.yaml --candidate devWebDB.db --utc-offset +02:00
 ```
 
-`--baseline JTL` (repeatable) adds a comparison to the second form. `--annotations` also prints
+`--baseline JTL` (repeatable) adds a comparison to the second form. A DevWeb result is refused
+with a baseline: the detector was calibrated on JMeter results only, so a DevWeb result gets an
+SLO-only verdict ([load/loadrunner/README.en.md](../load/loadrunner/README.en.md)). `--annotations` also prints
 a GitHub Actions annotation. `--json`, `--junit` and `--summary` write the verdict for other
 tools and for people: see [reporting.md](reporting.md).
 

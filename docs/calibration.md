@@ -205,7 +205,9 @@ Reported by `src/loadlens/calibration.py`, on the same runs:
 8. The campaign is not pooled with run 39058130424 or 39241955097.
 
 The floor holds for JMeter results, timed to the millisecond. The timer resolution of LoadRunner
-DevWeb results is unknown; it is checked when their adapter is written.
+DevWeb results is unknown; it is checked when their adapter is written. (Checked on 2026-10-21:
+DevWeb writes integer milliseconds, see `fixtures/loadrunner/PROVENANCE.md`. The detector is not
+applied to DevWeb results in v1.)
 
 ### Results (2026-10-19)
 

@@ -4,15 +4,15 @@
 fondé sur la statistique, pas sur un seuil isolé.**
 
 [![CI](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml/badge.svg)](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-243%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-266%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.13%2B-blue?logo=python)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 > 🇬🇧 [English version](README.en.md)
 
-> 🚧 **En construction.** Le verdict, son contrôle dans la CI et sa restitution (résumé de job,
-> JSON, JUnit, page de tendances) sont livrés ; l'ingestion LoadRunner ne l'est pas encore.
-> L'état réel est tenu dans le [CHANGELOG](CHANGELOG.md).
+> 🚧 **En construction.** Le verdict, son contrôle dans la CI, sa restitution (résumé de job,
+> JSON, JUnit, page de tendances) et l'ingestion des résultats LoadRunner DevWeb sont livrés ;
+> reste la finition. L'état réel est tenu dans le [CHANGELOG](CHANGELOG.md).
 
 ## Le problème
 
@@ -37,7 +37,7 @@ Un seuil isolé bloque alors des changements sains, ou laisse passer une vraie r
 
 ## Statut
 
-Livré : squelette et CI ; système testé (`sut/`) avec ses trois régressions activables — voir [sut/README.md](sut/README.md) ; schéma commun, lecture des fichiers JTL de JMeter et calcul des KPI — voir [docs/kpi.md](docs/kpi.md) ; test de charge JMeter exécuté dans la CI — voir [load/jmeter/README.md](load/jmeter/README.md) ; comparaison d'une référence et d'un candidat, avec un détecteur de régression calibré sur les machines de la CI (2 faux positifs sur 120 exécutions saines, régression N+1 détectée dans 10 exécutions sur 10) — voir [docs/calibration.md](docs/calibration.md) ; verdict PASS / WARN / FAIL / INCONCLUSIVE avec ses raisons, et contrôle de chaque pull request dans la CI (le système testé de la base contre celui de la pull request, le verdict fixe le statut du job), avec la preuve que la régression N+1 finit en FAIL — voir [docs/verdict.md](docs/verdict.md) ; restitution : résumé dans chaque job CI, verdict au format JSON (avec son schéma) et JUnit, et [page de tendances](https://bazanjeremy.github.io/loadlens/) alimentée par chaque exécution sur `main` — voir [docs/reporting.md](docs/reporting.md). Étape suivante : l'ingestion des résultats LoadRunner (DevWeb).
+Livré : squelette et CI ; système testé (`sut/`) avec ses trois régressions activables — voir [sut/README.md](sut/README.md) ; schéma commun, lecture des fichiers JTL de JMeter et calcul des KPI — voir [docs/kpi.md](docs/kpi.md) ; test de charge JMeter exécuté dans la CI — voir [load/jmeter/README.md](load/jmeter/README.md) ; comparaison d'une référence et d'un candidat, avec un détecteur de régression calibré sur les machines de la CI (2 faux positifs sur 120 exécutions saines, régression N+1 détectée dans 10 exécutions sur 10) — voir [docs/calibration.md](docs/calibration.md) ; verdict PASS / WARN / FAIL / INCONCLUSIVE avec ses raisons, et contrôle de chaque pull request dans la CI (le système testé de la base contre celui de la pull request, le verdict fixe le statut du job), avec la preuve que la régression N+1 finit en FAIL — voir [docs/verdict.md](docs/verdict.md) ; restitution : résumé dans chaque job CI, verdict au format JSON (avec son schéma) et JUnit, et [page de tendances](https://bazanjeremy.github.io/loadlens/) alimentée par chaque exécution sur `main` — voir [docs/reporting.md](docs/reporting.md) ; lecture des résultats LoadRunner DevWeb produits en local (`devWebDB.db`), avec un verdict sur les SLO seuls : ni comparaison à une référence ni parité de verdict côté LoadRunner en v1 — voir [load/loadrunner/README.md](load/loadrunner/README.md). Étape suivante : la finition.
 
 ## Licence
 

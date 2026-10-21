@@ -4,15 +4,15 @@
 statistics, not by a single threshold.**
 
 [![CI](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml/badge.svg)](https://github.com/BazanJeremy/loadlens/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-243%20passing-brightgreen?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-266%20passing-brightgreen?logo=pytest)](tests/)
 [![Python](https://img.shields.io/badge/python-3.13%2B-blue?logo=python)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 > 🇫🇷 [Version française](README.md)
 
-> 🚧 **Under construction.** The verdict, its CI check and its reporting (job summary, JSON,
-> JUnit, trend page) are delivered; LoadRunner ingestion is not yet. The actual state is tracked
-> in the [CHANGELOG](CHANGELOG.md).
+> 🚧 **Under construction.** The verdict, its CI check, its reporting (job summary, JSON,
+> JUnit, trend page) and the ingestion of LoadRunner DevWeb results are delivered; the finishing
+> pass remains. The actual state is tracked in the [CHANGELOG](CHANGELOG.md).
 
 ## The problem
 
@@ -37,7 +37,7 @@ threshold then blocks healthy changes, or lets a real regression through.
 
 ## Status
 
-Delivered: skeleton and CI; system under test (`sut/`) with its three switchable regressions — see [sut/README.en.md](sut/README.en.md); common schema, JMeter JTL reading and KPI computation — see [docs/kpi.md](docs/kpi.md); JMeter load test run in CI — see [load/jmeter/README.en.md](load/jmeter/README.en.md); baseline versus candidate comparison, with its regression detector calibrated on the CI runners (2 false positives out of 120 healthy runs, N+1 regression caught in 10 runs out of 10) — see [docs/calibration.md](docs/calibration.md); PASS / WARN / FAIL / INCONCLUSIVE verdict with its reasons, and a CI check of every pull request (the system under test of the base commit against the pull request's, the verdict sets the job status), with the proof that the N+1 regression ends FAIL — see [docs/verdict.md](docs/verdict.md); reporting: a summary in every CI job, the verdict as JSON (with its schema) and JUnit, and a [trend page](https://bazanjeremy.github.io/loadlens/) fed by every run on `main` — see [docs/reporting.md](docs/reporting.md). Next: ingesting LoadRunner results (DevWeb).
+Delivered: skeleton and CI; system under test (`sut/`) with its three switchable regressions — see [sut/README.en.md](sut/README.en.md); common schema, JMeter JTL reading and KPI computation — see [docs/kpi.md](docs/kpi.md); JMeter load test run in CI — see [load/jmeter/README.en.md](load/jmeter/README.en.md); baseline versus candidate comparison, with its regression detector calibrated on the CI runners (2 false positives out of 120 healthy runs, N+1 regression caught in 10 runs out of 10) — see [docs/calibration.md](docs/calibration.md); PASS / WARN / FAIL / INCONCLUSIVE verdict with its reasons, and a CI check of every pull request (the system under test of the base commit against the pull request's, the verdict sets the job status), with the proof that the N+1 regression ends FAIL — see [docs/verdict.md](docs/verdict.md); reporting: a summary in every CI job, the verdict as JSON (with its schema) and JUnit, and a [trend page](https://bazanjeremy.github.io/loadlens/) fed by every run on `main` — see [docs/reporting.md](docs/reporting.md); reading LoadRunner DevWeb results produced locally (`devWebDB.db`), with a verdict on SLOs alone: no baseline comparison and no verdict parity on the LoadRunner side in v1 — see [load/loadrunner/README.en.md](load/loadrunner/README.en.md). Next: the finishing pass.
 
 ## License
 
