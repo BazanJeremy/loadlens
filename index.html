@@ -40,7 +40,7 @@ a { color: inherit; }
 <body>
 <main>
 <h1>loadlens performance trend</h1>
-<p class="muted">1 run in <a href="history.json">history.json</a>, oldest first in the charts. A run with several candidate segments shows its worst one: the highest p95, p99 and error rate.</p>
+<p class="muted">2 runs in <a href="history.json">history.json</a>, oldest first in the charts. A run with several candidate segments shows its worst one: the highest p95, p99 and error rate.</p>
 <p>Each point is one load test checked against its SLOs. Runs ran on different machines, so their latencies are shown side by side, not compared: a regression is only measured against a baseline run on the same machine.</p>
 <p class="legend"><span class="pass">● PASS</span><span class="warn">● WARN</span><span class="fail">● FAIL</span><span class="inconclusive">● INCONCLUSIVE</span></p>
 <h2>p95 latency</h2>
@@ -50,8 +50,11 @@ a { color: inherit; }
 <line class="grid" x1="64" x2="704" y1="102.0" y2="102.0"/><text x="56" y="106.0" text-anchor="end">4 ms</text>
 <line class="grid" x1="64" x2="704" y1="57.0" y2="57.0"/><text x="56" y="61.0" text-anchor="end">6 ms</text>
 <line class="grid" x1="64" x2="704" y1="12.0" y2="12.0"/><text x="56" y="16.0" text-anchor="end">8 ms</text>
-<text x="384.0" y="212" text-anchor="middle">10-21</text>
-<circle class="pass" cx="384.0" cy="34.5" r="4"><title>2026-10-21 09:12 UTC, 5f4b119: 7 ms, PASS</title></circle>
+<polyline class="trace" points="224.0,34.5 544.0,12.0"/>
+<text x="224.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="224.0" cy="34.5" r="4"><title>2026-10-21 09:12 UTC, 5f4b119: 7 ms, PASS</title></circle>
+<text x="544.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="544.0" cy="12.0" r="4"><title>2026-10-21 09:22 UTC, 5f4b119: 8 ms, PASS</title></circle>
 </svg>
 <h2>Error rate</h2>
 <svg viewBox="0 0 720 220" role="img" aria-label="Error rate per run">
@@ -60,12 +63,16 @@ a { color: inherit; }
 <line class="grid" x1="64" x2="704" y1="102.0" y2="102.0"/><text x="56" y="106.0" text-anchor="end">200%</text>
 <line class="grid" x1="64" x2="704" y1="57.0" y2="57.0"/><text x="56" y="61.0" text-anchor="end">300%</text>
 <line class="grid" x1="64" x2="704" y1="12.0" y2="12.0"/><text x="56" y="16.0" text-anchor="end">400%</text>
-<text x="384.0" y="212" text-anchor="middle">10-21</text>
-<circle class="pass" cx="384.0" cy="192.0" r="4"><title>2026-10-21 09:12 UTC, 5f4b119: 0%, PASS</title></circle>
+<polyline class="trace" points="224.0,192.0 544.0,192.0"/>
+<text x="224.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="224.0" cy="192.0" r="4"><title>2026-10-21 09:12 UTC, 5f4b119: 0%, PASS</title></circle>
+<text x="544.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="544.0" cy="192.0" r="4"><title>2026-10-21 09:22 UTC, 5f4b119: 0%, PASS</title></circle>
 </svg>
 <h2>Runs, newest first</h2>
 <div class="table"><table>
 <thead><tr><th>Added (UTC)</th><th>Run</th><th>Commit</th><th>Verdict</th><th>p95</th><th>p99</th><th>Error rate</th><th>Samples</th></tr></thead><tbody>
+<tr><td>2026-10-21 09:22</td><td><a href="https://github.com/BazanJeremy/loadlens/actions/runs/39575861084">39575861084</a></td><td><code>5f4b119</code></td><td class="level pass">PASS</td><td>8 ms</td><td>10 ms</td><td>0.00%</td><td>2386</td></tr>
 <tr><td>2026-10-21 09:12</td><td><a href="https://github.com/BazanJeremy/loadlens/actions/runs/39574672398">39574672398</a></td><td><code>5f4b119</code></td><td class="level pass">PASS</td><td>7 ms</td><td>10 ms</td><td>0.00%</td><td>2386</td></tr>
 </tbody></table></div>
 </main>
