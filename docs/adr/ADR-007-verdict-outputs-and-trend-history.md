@@ -1,6 +1,6 @@
 # ADR-007: Verdict outputs for other tools, and a trend history on gh-pages
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-21
 - **Deciders:** Jérémy Bazan
 

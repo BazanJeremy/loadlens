@@ -1,6 +1,6 @@
 # ADR-005: Verdict levels, their order, and when a CI job fails
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-19
 - **Deciders:** Jérémy Bazan
 
