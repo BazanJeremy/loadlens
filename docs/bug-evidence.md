@@ -26,3 +26,7 @@ and the test that pins it.
   0%, 0.5%, 1%; with a 100% run: 0%, 50%, 100%) and
   `tests/test_report.py::test_page_p95_axis_when_every_p95_is_zero` (0 ms, 0.5 ms, 1 ms).
   Both fail on the code before the fix.
+- **Later (2026-10-21, step 8, not a bug):** these spans became floors, the axis spanning the
+  highest value or the floor, whichever is higher: an error rate under 1% now sits on a 0-1%
+  axis instead of topping an axis of its own. Pinned by
+  `tests/test_report.py::test_page_error_rate_axis_has_a_1_percent_floor`.

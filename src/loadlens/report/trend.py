@@ -89,11 +89,14 @@ def worst(run: TrendRun, kpi: str) -> float | None:
 LEVEL_CLASS = {lv: lv.value.lower() for lv in Level}
 WIDTH, HEIGHT = 720, 220
 LEFT, RIGHT, TOP, BOTTOM = 64, 16, 12, 28
-# Axis spans when every known value of a chart is 0. Sample times are whole milliseconds, so a
-# p95 above 0 is at least 1 ms. 1% is the smallest round rate that keeps the shipped hard
-# error-rate SLO (0.5%) on the axis; the page cannot read it, a run's SLOs are not in the history.
-ZERO_SPAN_P95_MS = 1.0
-ZERO_SPAN_ERROR_RATE = 0.01
+# Lowest top of each chart's axis, like a Grafana soft max: the axis spans the highest known
+# value or the floor, whichever is higher. Sample times are whole milliseconds, so a p95 above 0
+# is at least 1 ms and the p95 floor only shows on a series of zeros. 1% is the smallest round
+# rate that keeps the shipped hard error-rate SLO (0.5%) on the axis, and it keeps a rare error
+# (1 in 2,386 is 0.04%) near the bottom instead of at the top of an axis of its own; the page
+# cannot read the SLO, a run's SLOs are not in the history.
+AXIS_FLOOR_P95_MS = 1.0
+AXIS_FLOOR_ERROR_RATE = 0.01
 
 CSS = """
 :root { color-scheme: light dark;
@@ -141,14 +144,13 @@ def _chart(
     runs: list[TrendRun],
     values: list[float | None],
     fmt: Callable[[float], str],
-    zero_span: float,
+    floor: float,
 ) -> str:
-    """The axis spans the highest known value, or `zero_span` when every known value is 0."""
+    """The axis spans the highest known value, or `floor` when that value is lower."""
     known = [v for v in values if v is not None]
     if not known:
         return f'<p class="muted">{escape(title)}: no known value yet.</p>'
-    top = max(known)
-    span = top if top > 0 else zero_span
+    span = max(*known, floor)
     step = _nice_step(span)
     y_max = step * math.ceil(span / step)
     plot_w, plot_h = WIDTH - LEFT - RIGHT, HEIGHT - TOP - BOTTOM
@@ -233,7 +235,7 @@ def trend_page(history: History) -> str:
                 runs,
                 [worst(r, "p95_ms") for r in runs],
                 _ms_axis,
-                ZERO_SPAN_P95_MS,
+                AXIS_FLOOR_P95_MS,
             ),
             "<h2>Error rate</h2>",
             _chart(
@@ -241,7 +243,7 @@ def trend_page(history: History) -> str:
                 runs,
                 [worst(r, "error_rate") for r in runs],
                 _pct_axis,
-                ZERO_SPAN_ERROR_RATE,
+                AXIS_FLOOR_ERROR_RATE,
             ),
             "<h2>Runs, newest first</h2>",
             '<div class="table"><table>',
