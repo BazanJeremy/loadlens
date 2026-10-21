@@ -1,8 +1,9 @@
 """Command-line interface.
 
     loadlens kpi RESULT_FILE [options]    KPIs of a JMeter result file, as JSON on stdout
-    loadlens verdict --config SLO_YAML (--abba RUN_DIR | --candidate JTL ...) [options]
-                                          PASS / WARN / FAIL / INCONCLUSIVE, with the reasons
+    loadlens verdict --config SLO_YAML (--abba RUN_DIR | --candidate RESULT ...) [options]
+                                          PASS / WARN / FAIL / INCONCLUSIVE, with the reasons;
+                                          a RESULT is a JMeter JTL or a DevWeb devWebDB.db
     loadlens schema                       JSON schema of the verdict, on stdout
     loadlens trend HISTORY_JSON [--add VERDICT_JSON ...] [--page HTML]
                                           trend history and its HTML page
@@ -16,11 +17,13 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from pydantic import ValidationError
 
 from loadlens.adapters.jmeter import JtlFormatError, read_jtl
+from loadlens.adapters.loadrunner_devweb import is_sqlite, read_devweb
 from loadlens.calibration import UnusableRun, load_abba
 from loadlens.kpi import DEFAULT_APDEX_T_MS, compute, drop_warmup
 from loadlens.report.json_schema import verdict_json_schema_text
@@ -34,7 +37,7 @@ from loadlens.report.trend import (
     trend_page,
     trend_run,
 )
-from loadlens.schema import Machine
+from loadlens.schema import Machine, Run
 from loadlens.verdict import Level, Verdict, evaluate, inconclusive, load_config
 
 EXIT_OK = 0
@@ -65,6 +68,15 @@ def _target(text: str) -> tuple[str, float]:
     if not rate > 0:
         raise argparse.ArgumentTypeError(f"rate must be > 0, got {text!r}")
     return key, rate
+
+
+def _utc_offset(text: str) -> timedelta:
+    try:
+        return datetime.strptime(text, "%z").utcoffset()
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"expected an offset such as +02:00, got {text!r}"
+        ) from None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -106,13 +118,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="output of load/abba.sh; meta.json gives the segments, warm-up and target rates",
     )
     source.add_argument(
-        "--candidate", action="append", metavar="JTL", help="candidate segment, repeatable"
+        "--candidate",
+        action="append",
+        metavar="RESULT",
+        help="candidate segment, repeatable: a JMeter JTL or a LoadRunner DevWeb devWebDB.db",
     )
     verdict.add_argument(
         "--baseline",
         action="append",
         metavar="JTL",
         help="baseline segment, repeatable; without one the verdict rests on SLOs alone",
+    )
+    verdict.add_argument(
+        "--utc-offset",
+        type=_utc_offset,
+        metavar="OFFSET",
+        help="UTC offset of the clock that wrote a devWebDB.db, e.g. +02:00 (its timestamps "
+        "carry none)",
     )
     verdict.add_argument(
         "--warmup-s", type=float, help="leave out samples started during the first N seconds"
@@ -208,9 +230,24 @@ def _load_verdict(args: argparse.Namespace) -> Verdict:
             target_rps=targets,
         )
 
-    def load(paths: Sequence[str]) -> list:
-        return [drop_warmup(read_jtl(path), args.warmup_s or 0.0) for path in paths]
+    def read(path: str) -> Run:
+        if not is_sqlite(path):
+            return read_jtl(path)
+        if args.utc_offset is None:
+            raise ValueError(
+                f"{path}: DevWeb timestamps carry no UTC offset, give --utc-offset (the startTime"
+                " of DevWeb's replay_summary.json shows it)"
+            )
+        return read_devweb(path, utc_offset=args.utc_offset)
 
+    def load(paths: Sequence[str]) -> list:
+        return [drop_warmup(read(path), args.warmup_s or 0.0) for path in paths]
+
+    if args.baseline and any(is_sqlite(path) for path in [*args.candidate, *args.baseline]):
+        raise ValueError(
+            "a LoadRunner DevWeb result gets an SLO-only verdict, drop --baseline: the regression"
+            " detector is calibrated on JMeter results only (docs/calibration.md)"
+        )
     return evaluate(
         load(args.candidate),
         config,
