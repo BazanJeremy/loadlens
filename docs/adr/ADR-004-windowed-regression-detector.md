@@ -1,6 +1,6 @@
 # ADR-004: Windowed regression detector, without a baseline self-check gate
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-18
 - **Deciders:** Jérémy Bazan
 

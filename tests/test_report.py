@@ -340,6 +340,24 @@ def test_page_error_rate_axis(verdicts, shapes, labels):
     assert axis_labels(trend_page(History(runs=runs)), "Error rate per run") == labels
 
 
+def test_page_error_rate_axis_has_a_1_percent_floor(config):
+    """One error in 2,386 samples, the size of a CI run: 0.04% sits low on a 0-1% axis."""
+    n = 2386
+    run = Run(
+        metadata=META,
+        samples=Samples(
+            start_ms=[i * 100 for i in range(n)],
+            elapsed_ms=[50] * n,
+            transaction=["t"] * n,
+            success=[False] + [True] * (n - 1),
+            response_code=["500"] + ["200"] * (n - 1),
+        ),
+    )
+    runs = [entry(evaluate([run], config), str(i), f"2026-10-2{i}T08:00Z") for i in range(3)]
+    page = trend_page(History(runs=runs))
+    assert axis_labels(page, "Error rate per run") == ["0%", "0.5%", "1%"]
+
+
 def test_page_p95_axis_when_every_p95_is_zero(config):
     verdict = evaluate([run_of([0] * 600)], config)  # every sample under 1 ms
     runs = [entry(verdict, str(i), f"2026-10-2{i}T08:00Z") for i in range(3)]

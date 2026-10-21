@@ -1,6 +1,6 @@
 # ADR-002: Common result schema with one adapter per tool
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-17
 - **Deciders:** Jérémy Bazan
 

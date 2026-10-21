@@ -1,6 +1,6 @@
 # ADR-006: A 2 ms floor on the p95 change of the windowed detector
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-19
 - **Deciders:** Jérémy Bazan
 

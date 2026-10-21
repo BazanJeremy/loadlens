@@ -137,6 +137,13 @@ Bugs are logged with what caught them, their cause and fix in
 - Development dependency: `jsonschema` 4.26.0, to check verdicts against their schema.
 - Common schema: a sample's `response_code` may be `None`, when the source records no code per
   sample (DevWeb transactions).
+- Trend page: the error-rate axis spans at least 0 to 1%, a floor like a Grafana soft max. One
+  error in 2,386 samples (0.04%) used to sit high on a 0 to 0.06% axis of its own; it now sits near
+  the bottom of a 0 to 1% one. The p95 axis keeps its 1 ms floor, which only shows on a series of
+  zeros.
+- ADR-001 to ADR-007 accepted.
+- READMEs (French and English) completed: the problem, a quick start, KPIs and thresholds, the
+  decisions, known limitations and related projects. The "under construction" banner is gone.
 
 ### Fixed
 
