@@ -1,5 +1,5 @@
 # Apache JMeter in a container: same runtime locally (no local Java needed) and in CI.
-FROM eclipse-temurin:21-jre-noble@sha256:435763596c3be2b929e8bb4282520849804715c3483cfffaa323a7433f2caf71
+FROM eclipse-temurin:25-jre-noble@sha256:e3b6f7887a50f20d8f07abf279d8a81a5953fb398a9555bd9edd56b9bd15968c
 
 ARG JMETER_VERSION=5.6.3
 # Official checksum: https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.6.3.tgz.sha512
