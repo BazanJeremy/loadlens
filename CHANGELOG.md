@@ -121,6 +121,9 @@ Bugs are logged with what caught them, their cause and fix in
   run of the script against the system under test on 2026-10-21 (1,161 transactions, all passed:
   the verdict is PASS, every SLO checked, throughput included). Tests check both files against
   DevWeb's summary, and that their timestamps mark the end of each transaction.
+- Dependabot (`.github/dependabot.yml`): monthly, grouped updates for the SHA-pinned
+  actions, the pinned Python dependencies (`/` and `sut/`) and the Docker base images.
+  The pins were exact but nothing refreshed them.
 
 ### Changed
 
