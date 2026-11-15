@@ -123,7 +123,9 @@ Bugs are logged with what caught them, their cause and fix in
   DevWeb's summary, and that their timestamps mark the end of each transaction.
 - Dependabot (`.github/dependabot.yml`): monthly, grouped updates for the SHA-pinned
   actions, the pinned Python dependencies (`/` and `sut/`) and the Docker base images.
-  The pins were exact but nothing refreshed them.
+  The pins were exact but nothing refreshed them. For the two base images, major and
+  minor updates are ignored: the first run proposed Python 3.13 to 3.15 and Temurin 21 to 25,
+  and both failed CI.
 
 ### Changed
 
