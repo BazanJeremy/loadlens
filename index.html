@@ -40,7 +40,7 @@ a { color: inherit; }
 <body>
 <main>
 <h1>loadlens performance trend</h1>
-<p class="muted">9 runs in <a href="history.json">history.json</a>, oldest first in the charts. A run with several candidate segments shows its worst one: the highest p95, p99 and error rate.</p>
+<p class="muted">10 runs in <a href="history.json">history.json</a>, oldest first in the charts. A run with several candidate segments shows its worst one: the highest p95, p99 and error rate.</p>
 <p>Each point is one load test checked against its SLOs. Runs ran on different machines, so their latencies are shown side by side, not compared: a regression is only measured against a baseline run on the same machine.</p>
 <p class="legend"><span class="pass">● PASS</span><span class="warn">● WARN</span><span class="fail">● FAIL</span><span class="inconclusive">● INCONCLUSIVE</span></p>
 <h2>p95 latency</h2>
@@ -50,46 +50,51 @@ a { color: inherit; }
 <line class="grid" x1="64" x2="704" y1="102.0" y2="102.0"/><text x="56" y="106.0" text-anchor="end">4 ms</text>
 <line class="grid" x1="64" x2="704" y1="57.0" y2="57.0"/><text x="56" y="61.0" text-anchor="end">6 ms</text>
 <line class="grid" x1="64" x2="704" y1="12.0" y2="12.0"/><text x="56" y="16.0" text-anchor="end">8 ms</text>
-<polyline class="trace" points="99.6,34.5 170.7,12.0 241.8,34.5 312.9,57.0 384.0,34.5 455.1,79.5 526.2,12.0 597.3,79.5 668.4,34.5"/>
-<text x="99.6" y="212" text-anchor="middle">10-21</text>
-<circle class="pass" cx="99.6" cy="34.5" r="4"><title>2026-10-21 09:12 UTC, 5f4b119: 7 ms, PASS</title></circle>
-<circle class="pass" cx="170.7" cy="12.0" r="4"><title>2026-10-21 09:22 UTC, 5f4b119: 8 ms, PASS</title></circle>
-<text x="241.8" y="212" text-anchor="middle">10-21</text>
-<circle class="pass" cx="241.8" cy="34.5" r="4"><title>2026-10-21 11:06 UTC, 5f4b119: 7 ms, PASS</title></circle>
-<circle class="pass" cx="312.9" cy="57.0" r="4"><title>2026-10-21 11:30 UTC, 1e0b00b: 6 ms, PASS</title></circle>
-<text x="384.0" y="212" text-anchor="middle">10-21</text>
-<circle class="pass" cx="384.0" cy="34.5" r="4"><title>2026-10-21 12:50 UTC, da9b9fa: 7 ms, PASS</title></circle>
-<circle class="pass" cx="455.1" cy="79.5" r="4"><title>2026-10-21 13:53 UTC, d692916: 5 ms, PASS</title></circle>
-<text x="526.2" y="212" text-anchor="middle">11-15</text>
-<circle class="pass" cx="526.2" cy="12.0" r="4"><title>2026-11-15 07:45 UTC, b26f802: 8 ms, PASS</title></circle>
-<circle class="pass" cx="597.3" cy="79.5" r="4"><title>2026-11-15 12:42 UTC, 5a68c9c: 5 ms, PASS</title></circle>
-<text x="668.4" y="212" text-anchor="middle">11-15</text>
-<circle class="pass" cx="668.4" cy="34.5" r="4"><title>2026-11-15 12:51 UTC, 61f9986: 7 ms, PASS</title></circle>
+<polyline class="trace" points="96.0,34.5 160.0,12.0 224.0,34.5 288.0,57.0 352.0,34.5 416.0,79.5 480.0,12.0 544.0,79.5 608.0,34.5 672.0,57.0"/>
+<text x="96.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="96.0" cy="34.5" r="4"><title>2026-10-21 09:12 UTC, 5f4b119: 7 ms, PASS</title></circle>
+<circle class="pass" cx="160.0" cy="12.0" r="4"><title>2026-10-21 09:22 UTC, 5f4b119: 8 ms, PASS</title></circle>
+<text x="224.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="224.0" cy="34.5" r="4"><title>2026-10-21 11:06 UTC, 5f4b119: 7 ms, PASS</title></circle>
+<circle class="pass" cx="288.0" cy="57.0" r="4"><title>2026-10-21 11:30 UTC, 1e0b00b: 6 ms, PASS</title></circle>
+<text x="352.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="352.0" cy="34.5" r="4"><title>2026-10-21 12:50 UTC, da9b9fa: 7 ms, PASS</title></circle>
+<circle class="pass" cx="416.0" cy="79.5" r="4"><title>2026-10-21 13:53 UTC, d692916: 5 ms, PASS</title></circle>
+<text x="480.0" y="212" text-anchor="middle">11-15</text>
+<circle class="pass" cx="480.0" cy="12.0" r="4"><title>2026-11-15 07:45 UTC, b26f802: 8 ms, PASS</title></circle>
+<circle class="pass" cx="544.0" cy="79.5" r="4"><title>2026-11-15 12:42 UTC, 5a68c9c: 5 ms, PASS</title></circle>
+<text x="608.0" y="212" text-anchor="middle">11-15</text>
+<circle class="pass" cx="608.0" cy="34.5" r="4"><title>2026-11-15 12:51 UTC, 61f9986: 7 ms, PASS</title></circle>
+<text x="672.0" y="212" text-anchor="middle">11-15</text>
+<circle class="pass" cx="672.0" cy="57.0" r="4"><title>2026-11-15 12:58 UTC, 0dc3da1: 6 ms, PASS</title></circle>
 </svg>
 <h2>Error rate</h2>
 <svg viewBox="0 0 720 220" role="img" aria-label="Error rate per run">
 <line class="grid" x1="64" x2="704" y1="192.0" y2="192.0"/><text x="56" y="196.0" text-anchor="end">0%</text>
 <line class="grid" x1="64" x2="704" y1="102.0" y2="102.0"/><text x="56" y="106.0" text-anchor="end">0.5%</text>
 <line class="grid" x1="64" x2="704" y1="12.0" y2="12.0"/><text x="56" y="16.0" text-anchor="end">1%</text>
-<polyline class="trace" points="99.6,192.0 170.7,192.0 241.8,192.0 312.9,192.0 384.0,192.0 455.1,192.0 526.2,192.0 597.3,192.0 668.4,192.0"/>
-<text x="99.6" y="212" text-anchor="middle">10-21</text>
-<circle class="pass" cx="99.6" cy="192.0" r="4"><title>2026-10-21 09:12 UTC, 5f4b119: 0%, PASS</title></circle>
-<circle class="pass" cx="170.7" cy="192.0" r="4"><title>2026-10-21 09:22 UTC, 5f4b119: 0%, PASS</title></circle>
-<text x="241.8" y="212" text-anchor="middle">10-21</text>
-<circle class="pass" cx="241.8" cy="192.0" r="4"><title>2026-10-21 11:06 UTC, 5f4b119: 0%, PASS</title></circle>
-<circle class="pass" cx="312.9" cy="192.0" r="4"><title>2026-10-21 11:30 UTC, 1e0b00b: 0%, PASS</title></circle>
-<text x="384.0" y="212" text-anchor="middle">10-21</text>
-<circle class="pass" cx="384.0" cy="192.0" r="4"><title>2026-10-21 12:50 UTC, da9b9fa: 0%, PASS</title></circle>
-<circle class="pass" cx="455.1" cy="192.0" r="4"><title>2026-10-21 13:53 UTC, d692916: 0%, PASS</title></circle>
-<text x="526.2" y="212" text-anchor="middle">11-15</text>
-<circle class="pass" cx="526.2" cy="192.0" r="4"><title>2026-11-15 07:45 UTC, b26f802: 0%, PASS</title></circle>
-<circle class="pass" cx="597.3" cy="192.0" r="4"><title>2026-11-15 12:42 UTC, 5a68c9c: 0%, PASS</title></circle>
-<text x="668.4" y="212" text-anchor="middle">11-15</text>
-<circle class="pass" cx="668.4" cy="192.0" r="4"><title>2026-11-15 12:51 UTC, 61f9986: 0%, PASS</title></circle>
+<polyline class="trace" points="96.0,192.0 160.0,192.0 224.0,192.0 288.0,192.0 352.0,192.0 416.0,192.0 480.0,192.0 544.0,192.0 608.0,192.0 672.0,192.0"/>
+<text x="96.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="96.0" cy="192.0" r="4"><title>2026-10-21 09:12 UTC, 5f4b119: 0%, PASS</title></circle>
+<circle class="pass" cx="160.0" cy="192.0" r="4"><title>2026-10-21 09:22 UTC, 5f4b119: 0%, PASS</title></circle>
+<text x="224.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="224.0" cy="192.0" r="4"><title>2026-10-21 11:06 UTC, 5f4b119: 0%, PASS</title></circle>
+<circle class="pass" cx="288.0" cy="192.0" r="4"><title>2026-10-21 11:30 UTC, 1e0b00b: 0%, PASS</title></circle>
+<text x="352.0" y="212" text-anchor="middle">10-21</text>
+<circle class="pass" cx="352.0" cy="192.0" r="4"><title>2026-10-21 12:50 UTC, da9b9fa: 0%, PASS</title></circle>
+<circle class="pass" cx="416.0" cy="192.0" r="4"><title>2026-10-21 13:53 UTC, d692916: 0%, PASS</title></circle>
+<text x="480.0" y="212" text-anchor="middle">11-15</text>
+<circle class="pass" cx="480.0" cy="192.0" r="4"><title>2026-11-15 07:45 UTC, b26f802: 0%, PASS</title></circle>
+<circle class="pass" cx="544.0" cy="192.0" r="4"><title>2026-11-15 12:42 UTC, 5a68c9c: 0%, PASS</title></circle>
+<text x="608.0" y="212" text-anchor="middle">11-15</text>
+<circle class="pass" cx="608.0" cy="192.0" r="4"><title>2026-11-15 12:51 UTC, 61f9986: 0%, PASS</title></circle>
+<text x="672.0" y="212" text-anchor="middle">11-15</text>
+<circle class="pass" cx="672.0" cy="192.0" r="4"><title>2026-11-15 12:58 UTC, 0dc3da1: 0%, PASS</title></circle>
 </svg>
 <h2>Runs, newest first</h2>
 <div class="table"><table>
 <thead><tr><th>Added (UTC)</th><th>Run</th><th>Commit</th><th>Verdict</th><th>p95</th><th>p99</th><th>Error rate</th><th>Samples</th></tr></thead><tbody>
+<tr><td>2026-11-15 12:58</td><td><a href="https://github.com/BazanJeremy/loadlens/actions/runs/43716215074">43716215074</a></td><td><code>0dc3da1</code></td><td class="level pass">PASS</td><td>6 ms</td><td>9 ms</td><td>0.00%</td><td>2386</td></tr>
 <tr><td>2026-11-15 12:51</td><td><a href="https://github.com/BazanJeremy/loadlens/actions/runs/43715565219">43715565219</a></td><td><code>61f9986</code></td><td class="level pass">PASS</td><td>7 ms</td><td>10 ms</td><td>0.00%</td><td>2386</td></tr>
 <tr><td>2026-11-15 12:42</td><td><a href="https://github.com/BazanJeremy/loadlens/actions/runs/43714862561">43714862561</a></td><td><code>5a68c9c</code></td><td class="level pass">PASS</td><td>5 ms</td><td>7 ms</td><td>0.00%</td><td>2386</td></tr>
 <tr><td>2026-11-15 07:45</td><td><a href="https://github.com/BazanJeremy/loadlens/actions/runs/43690959683">43690959683</a></td><td><code>b26f802</code></td><td class="level pass">PASS</td><td>8 ms</td><td>11 ms</td><td>0.00%</td><td>2386</td></tr>
