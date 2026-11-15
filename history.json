@@ -286,6 +286,28 @@
           "cv": 0.407455534735283
         }
       }
+    },
+    {
+      "run_id": "43719434417",
+      "commit": "627f6cc664cc4b8ed3911479237b21158abdc87b",
+      "added_at": "2026-11-15T13:35:46Z",
+      "url": "https://github.com/BazanJeremy/loadlens/actions/runs/43719434417",
+      "level": "PASS",
+      "segments": {
+        "jmeter.jtl": {
+          "count": 2386,
+          "error_count": 0,
+          "error_rate": 0.0,
+          "p50_ms": 2.0,
+          "p90_ms": 3.0,
+          "p95_ms": 4.0,
+          "p99_ms": 5.0,
+          "mean_ms": 2.232606873428332,
+          "throughput_rps": 19.974048804989327,
+          "apdex": 1.0,
+          "cv": 0.4245756739375455
+        }
+      }
     }
   ]
 }
