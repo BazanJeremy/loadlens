@@ -152,6 +152,9 @@ Bugs are logged with what caught them, their cause and fix in
 
 ### Fixed
 
+- `sut/requirements.txt` header: it said the file was a `pip freeze` of 2026-10-17, but
+  Dependabot has edited the pins in place since. The header now dates the first resolution and
+  says the set is not known to equal a fresh one, with how to check.
 - The JMeter container no longer waits 60 s after each test: JMeter 5.6.3's open model keeps idle
   non-daemon threads for a minute; `load/jmeter/entrypoint.sh` returns at `... end of run`
   (132 s instead of 192 s for the CI profile, JTL complete).

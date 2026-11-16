@@ -1,6 +1,9 @@
-# Full pinned dependency set of the system under test, transitive dependencies included.
-# Resolved from requirements.in inside python:3.13.16-slim-trixie@sha256:70729b46… with
-# `pip install -r requirements.in && pip freeze` (2026-10-17). Regenerate the same way.
+# Pinned dependency set of the system under test, transitive dependencies included.
+# First resolved on 2026-10-17 from requirements.in inside
+# python:3.13.16-slim-trixie@sha256:70729b46… with `pip install -r requirements.in && pip freeze`.
+# Since then Dependabot (group sut-python) edits these pins in place, so the set is no longer
+# known to equal a fresh resolution. To check or regenerate: run the same commands inside the
+# image pinned in sut/Dockerfile and compare.
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1
