@@ -139,6 +139,9 @@ Bugs are logged with what caught them, their cause and fix in
   segment, and two alike made it ambiguous. With `--candidate`, the name is the file name.
 - CI: a run on `main` is no longer cancelled by a newer one, since each is a point of the trend
   page; pull request runs still are.
+- CI: Python 3.13.16 -> 3.13.18 in the eight `setup-python` steps, the patch release the system
+  under test's image already runs since its base image was bumped. Dependabot moved that image
+  but left these inputs at 3.13.16, so this pin is moved by hand.
 - Development dependency: `jsonschema` 4.26.0, to check verdicts against their schema.
 - Common schema: a sample's `response_code` may be `None`, when the source records no code per
   sample (DevWeb transactions).
